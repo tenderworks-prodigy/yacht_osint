@@ -6,6 +6,8 @@ import random
 import time
 from typing import List
 
+from src.common.env import require_env
+
 import tldextract
 
 import requests
@@ -30,10 +32,8 @@ def search_sites(query: str, num: int = 10) -> List[str]:
         log.warning("skipping search due to repeated rate limits")
         return []
 
-    key = os.environ.get("GOOGLE_CSE_API_KEY")
-    cx = os.environ.get("GOOGLE_CSE_CX")
-    if not key or not cx:
-        raise RuntimeError("Missing Google CSE credentials")
+    key = require_env("GOOGLE_CSE_API_KEY")
+    cx = require_env("GOOGLE_CSE_CX")
 
     payload = {}
     for attempt in range(MAX_RETRIES):

@@ -17,7 +17,7 @@ Central manifest for all automated agents, bots, and CI tasks in **yacht_osint**
 |------|------|
 | **Purpose** | Nightly OSINT pipeline (`.github/workflows/pipeline.yml`). |
 | **Triggers** | Cron `0 2 * * *` UTC & manual `workflow_dispatch`. |
-| **Success path** | Exports CSVs, rclone upload to Drive, Sheet refresh. |
+| **Success path** | Formatter + linter → tests → scrape → persist → export → rclone (retry). |
 | **Failure path** | Step “On failure open issue” creates Issue `osint‑ci‑fail`. |
 
 ---

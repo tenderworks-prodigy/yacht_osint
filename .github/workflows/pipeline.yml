@@ -26,6 +26,12 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Check formatting
+        run: |
+          ruff --fix .
+          black .
+          git diff --exit-code
+
       - name: Run unit tests
         run: pytest -q
 
@@ -38,6 +44,13 @@ jobs:
           head <<<"$GOOGLE_CSE_API_KEY" -c 1 >/dev/null
           head <<<"$GOOGLE_CSE_CX" -c 1 >/dev/null
 
+      - name: Run scraping
+        run: |
+          python -m src.scrape.crawl
+          python -m src.scrape.wayback
+          python -m src.scrape.parse
+          python -m src.extract.run_all
+
       - name: Run OSINT pipeline
         run: |
           set -o errexit -o nounset -o pipefail
@@ -45,10 +58,6 @@ jobs:
           mkdir -p exports
           ls -a exports/
           python -m src.cli
-          python -m src.scrape.crawl
-          python -m src.scrape.wayback
-          python -m src.scrape.parse
-          python -m src.extract.run_all
           python -m src.persist.duckdb_io
           python -m src.persist.new_data
           python -m src.persist.exports
@@ -74,6 +83,9 @@ jobs:
               sys.exit("Missing columns")
           EOF
 
+      - name: Generate DQ report
+        run: python -m src.reporting.dq_report
+
       - name: Upload exports as artifact
         if: always()
         uses: actions/upload-artifact@v4
@@ -86,9 +98,6 @@ jobs:
 
       - name: Run QA checks
         run: python -m src.qa.expectations
-
-      - name: Generate DQ report
-        run: python -m src.reporting.dq_report
 
       - name: Check gh version
         run: gh --version
