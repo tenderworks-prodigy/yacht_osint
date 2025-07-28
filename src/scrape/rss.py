@@ -1,3 +1,4 @@
+print(">>> rss.py reached <<<")
 import feedparser, logging, pathlib, json, os
 from pathlib import Path
 
