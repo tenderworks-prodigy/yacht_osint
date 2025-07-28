@@ -22,3 +22,4 @@ tenacity
 python-dotenv
 feedfinder2
 tldextract
+pytest>=7.0.0
