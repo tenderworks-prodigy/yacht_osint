@@ -1,0 +1,5 @@
+- domain: boatinternational.com
+  rss: https://www.boatinternational.com/feed
+  sitemap: https://www.boatinternational.com/sitemap.xml
+  patterns: [yacht, delivered, launch, tender, limousine, chase, rib]
+  max_pages: 5
