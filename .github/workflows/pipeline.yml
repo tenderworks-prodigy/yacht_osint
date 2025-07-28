@@ -22,7 +22,7 @@ jobs:
       - run: pip install -r requirements.txt
       - name: Run OSINT pipeline
         run: |
-          python -m src.scrape.rss
+          python -u -m src.scrape.rss
           python -m src.scrape.sitemap
           python -m src.scrape.cse
           python -m src.scrape.crawl
