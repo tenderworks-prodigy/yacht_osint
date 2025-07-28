@@ -46,7 +46,7 @@ jobs:
           python -m src.persist.duckdb_io
           python -m src.persist.exports
 
-      - name: Debug: show exports directory contents
+      - name: "Debug: show exports directory contents"
         run: |
           echo "📂 Project root contents:"
           ls -la
