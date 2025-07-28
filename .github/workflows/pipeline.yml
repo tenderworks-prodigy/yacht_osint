@@ -35,25 +35,37 @@ jobs:
             echo "Google CSE credentials missing" >&2
             exit 1
           fi
+          head <<<"$GOOGLE_CSE_API_KEY" -c 1 >/dev/null
+          head <<<"$GOOGLE_CSE_CX" -c 1 >/dev/null
 
       - name: Run OSINT pipeline
         run: |
+          rm -rf exports && mkdir -p exports
           python -m src.cli
           python -m src.scrape.crawl
           python -m src.scrape.wayback
           python -m src.scrape.parse
           python -m src.extract.run_all
+          python -m src.persist.new_data
           python -m src.persist.duckdb_io
           python -m src.persist.new_data
           python -m src.persist.exports
 
       - name: "Debug: show exports directory contents"
         run: |
+          set -o pipefail
           echo "📂 Project root contents:"
           ls -la
           echo
           echo "🔍 Recursive exports folder:"
-          ls -R exports/ || echo "No exports/ directory found"
+          ls -R exports/
+
+      - name: Smoke test exports
+        run: |
+          [[ -s exports/yachts.csv ]] || {
+            echo "No data exported!" >&2
+            exit 1
+          }
 
       - name: Upload exports as artifact
         if: always()
@@ -71,8 +83,13 @@ jobs:
       - name: Generate DQ report
         run: python -m src.reporting.dq_report
 
+      - name: Check gh version
+        run: gh --version
+
       - name: On failure open issue
         if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh issue create --title "❌ Yacht-OSINT nightly failed" \
                           --body "Automated run failed – see Actions logs." \
