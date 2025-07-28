@@ -6,6 +6,7 @@ on:
 
 jobs:
   build:
+    environment: DATA
     runs-on: ubuntu-latest
     env:
       HF_TOKEN: ${{ secrets.HF_TOKEN }}
@@ -13,7 +14,7 @@ jobs:
       RCLONE_CONFIG: ${{ secrets.RCLONE_CONFIG }}
       GOOGLE_CSE_API_KEY: ${{ secrets.GOOGLE_CSE_API_KEY }}
       GOOGLE_CSE_CX: ${{ secrets.GOOGLE_CSE_CX }}
-      DRIVE_FOLDER_ID: ${{ vars.DRIVE_FOLDER_ID }}
+      DRIVE_FOLDER_ID: ${{ secrets.DRIVE_FOLDER_ID }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
