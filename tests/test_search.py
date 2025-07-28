@@ -8,6 +8,7 @@ from src.scrape.search import search_sites
 class DummyResponse:
     def __init__(self, items: List[str]):
         self._items = items
+        self.status_code = 200
 
     def raise_for_status(self):
         pass
@@ -31,3 +32,23 @@ def test_search_sites(monkeypatch):
     os.environ["GOOGLE_CSE_CX"] = "2"
     domains = search_sites("test")
     assert domains == ["example.com", "other.com"]
+
+
+def test_search_sites_rate_limit(monkeypatch):
+    class RLResponse:
+        status_code = 429
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {}
+
+    monkeypatch.setattr("requests.get", lambda *a, **k: RLResponse())
+    monkeypatch.setattr("time.sleep", lambda *_: None)
+    os.environ["GOOGLE_CSE_API_KEY"] = "1"
+    os.environ["GOOGLE_CSE_CX"] = "2"
+    os.environ["CSE_RETRIES"] = "1"
+    os.environ["CSE_MAX_CONSECUTIVE"] = "1"
+    domains = search_sites("foo")
+    assert domains == []
