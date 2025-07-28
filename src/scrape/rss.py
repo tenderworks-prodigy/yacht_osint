@@ -13,6 +13,9 @@ import feedparser, logging, pathlib, json, os
 from pathlib import Path
 
 FEED = "https://www.boatinternational.com/feed"
+print(f">>> Fetching RSS from {your_url!r}")
+print(f">>> HTTP status: {feed.get('status', 'unknown')}")
+print(f">>> Found {len(feed.entries)} entries")
 OUT  = Path("data/cache/rss_boatinternational.json")
 
 def run() -> None:
