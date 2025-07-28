@@ -7,6 +7,12 @@ from typing import Dict, List
 
 import feedfinder2
 import feedparser
+from bs4 import BeautifulSoup
+
+# silence feedfinder2 warnings by forcing the lxml parser
+feedfinder2.BeautifulSoup = lambda markup, *a, **k: BeautifulSoup(
+    markup, features="lxml", *a, **k
+)
 
 log = logging.getLogger(__name__)
 
