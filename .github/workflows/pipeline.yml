@@ -40,14 +40,17 @@ jobs:
 
       - name: Run OSINT pipeline
         run: |
-          rm -rf exports && mkdir -p exports
+          set -o errexit -o nounset -o pipefail
+          rm -rf exports/* exports/.* 2>/dev/null || true
+          mkdir -p exports
+          ls -a exports/
           python -m src.cli
           python -m src.scrape.crawl
           python -m src.scrape.wayback
           python -m src.scrape.parse
           python -m src.extract.run_all
-          python -m src.persist.new_data
           python -m src.persist.duckdb_io
+          python -m src.persist.new_data
           python -m src.persist.exports
 
       - name: "Debug: show exports directory contents"
@@ -61,10 +64,15 @@ jobs:
 
       - name: Smoke test exports
         run: |
-          [[ -s exports/yachts.csv ]] || {
-            echo "No data exported!" >&2
-            exit 1
-          }
+          python - <<'EOF'
+          import pandas as pd, sys
+          df = pd.read_csv("exports/yachts.csv")
+          if df.empty:
+              sys.exit("No data exported!")
+          expected = {"name", "length_m"}
+          if not expected.issubset(df.columns):
+              sys.exit("Missing columns")
+          EOF
 
       - name: Upload exports as artifact
         if: always()
@@ -92,4 +100,6 @@ jobs:
         run: |
           gh issue create --title "❌ Yacht-OSINT nightly failed" \
                           --body "Automated run failed – see Actions logs." \
-                          --assignee dima.kovtoniuk@tenderworks.com
+                          --dry-run
+          gh issue create --title "❌ Yacht-OSINT nightly failed" \
+                          --body "Automated run failed – see Actions logs."
