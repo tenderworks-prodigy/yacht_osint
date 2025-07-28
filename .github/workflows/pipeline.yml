@@ -44,6 +44,7 @@ jobs:
           python -m src.scrape.parse
           python -m src.extract.run_all
           python -m src.persist.duckdb_io
+          python -m src.persist.new_data
           python -m src.persist.exports
 
       - name: "Debug: show exports directory contents"
