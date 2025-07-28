@@ -1,4 +1,14 @@
 print(">>> rss.py reached <<<")
+
+import logging, sys
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(levelname)s:%(name)s:%(message)s",
+    stream=sys.stdout,
+    force=True,   # overwrite any prior config
+)
+
+
 import feedparser, logging, pathlib, json, os
 from pathlib import Path
 
