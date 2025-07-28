@@ -21,7 +21,10 @@ jobs:
         with: {python-version: '3.11'}
       - run: pip install -r requirements.txt
       - name: Run unit tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}/src
         run: pytest -q
+        
       - name: Ensure CSE key present
         run: |
           if [ -z "$GOOGLE_CSE_API_KEY" ] || [ -z "$GOOGLE_CSE_CX" ]; then
