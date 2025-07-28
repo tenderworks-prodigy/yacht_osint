@@ -18,18 +18,24 @@ jobs:
       PYTHONPATH: ${{ github.workspace }}
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: pip install -r requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
       - name: Run unit tests
         run: pytest -q
+
       - name: Ensure CSE key present
         run: |
           if [ -z "$GOOGLE_CSE_API_KEY" ] || [ -z "$GOOGLE_CSE_CX" ]; then
             echo "Google CSE credentials missing" >&2
             exit 1
           fi
+
       - name: Run OSINT pipeline
         run: |
           python -m src.cli
@@ -40,23 +46,27 @@ jobs:
           python -m src.persist.duckdb_io
           python -m src.persist.exports
 
-      - name: List all exports on disk
+      - name: Debug: show exports directory contents
         run: |
-          echo "== exports directory =="
-          ls -R exports/
+          echo "📂 Project root contents:"
+          ls -la
+          echo
+          echo "🔍 Recursive exports folder:"
+          ls -R exports/ || echo "No exports/ directory found"
 
-      - name: Upload exports as GitHub artifact
+      - name: Upload exports as artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: yacht-osint-exports
           path: exports/
-        
+
       - name: Upload CSVs to Drive
         run: python -m src.persist.rclone_push
-        
+
       - name: Run QA checks
         run: python -m src.qa.expectations
-     
+
       - name: Generate DQ report
         run: python -m src.reporting.dq_report
 
