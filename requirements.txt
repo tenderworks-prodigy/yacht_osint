@@ -20,3 +20,5 @@ pydrive2
 pandera
 tenacity
 python-dotenv
+feedfinder2
+tldextract

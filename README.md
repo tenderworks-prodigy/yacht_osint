@@ -39,3 +39,10 @@ Environment variables and GitHub secrets used by the pipeline:
 RSS → Sitemap → CSE → Crawl → Wayback → Parse → Extract → Dedupe →
 DuckDB → Exports → rclone → QA → Report
 ```
+
+### Automatic source discovery
+
+Search terms for Google Custom Search are defined in `configs/settings.yml` under
+`search.queries`. Running `python -m src.cli` will issue these queries, collect
+unique domains and attempt RSS feed discovery for each domain. Discovered feeds
+are saved to `yacht_osint/data/cache/discovered_feeds.json`.

@@ -11,3 +11,11 @@ llm:
   temperature: 0
   schema_retry: 1
 canonical_db_path: ${CANONICAL_DB_PATH}
+search:
+  queries:
+    - superyacht news
+    - yacht industry blog
+    - megayacht updates
+  result_count: 5
+  domain_whitelist: []
+  domain_blacklist: []

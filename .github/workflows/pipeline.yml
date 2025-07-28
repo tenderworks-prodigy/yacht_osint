@@ -20,11 +20,17 @@ jobs:
       - uses: actions/setup-python@v5
         with: {python-version: '3.11'}
       - run: pip install -r requirements.txt
+      - name: Run unit tests
+        run: pytest -q
+      - name: Ensure CSE key present
+        run: |
+          if [ -z "$GOOGLE_CSE_API_KEY" ] || [ -z "$GOOGLE_CSE_CX" ]; then
+            echo "Google CSE credentials missing" >&2
+            exit 1
+          fi
       - name: Run OSINT pipeline
         run: |
-          python -u -m src.scrape.rss
-          python -m src.scrape.sitemap
-          python -m src.scrape.cse
+          python -m src.cli
           python -m src.scrape.crawl
           python -m src.scrape.wayback
           python -m src.scrape.parse
