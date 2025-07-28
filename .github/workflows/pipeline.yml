@@ -1,0 +1,44 @@
+name: yacht-osint-nightly
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      RCLONE_CONFIG: ${{ secrets.RCLONE_CONFIG }}
+      GOOGLE_CSE_API_KEY: ${{ secrets.GOOGLE_CSE_API_KEY }}
+      GOOGLE_CSE_CX: ${{ secrets.GOOGLE_CSE_CX }}
+      DRIVE_FOLDER_ID: ${{ vars.DRIVE_FOLDER_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: pip install -r requirements.txt
+      - name: Run OSINT pipeline
+        run: |
+          python -m src.scrape.rss
+          python -m src.scrape.sitemap
+          python -m src.scrape.cse
+          python -m src.scrape.crawl
+          python -m src.scrape.wayback
+          python -m src.scrape.parse
+          python -m src.extract.run_all
+          python -m src.persist.duckdb_io
+          python -m src.persist.exports
+      - name: Upload CSVs to Drive
+        run: python -m src.persist.rclone_push
+      - name: Run QA checks
+        run: python -m src.qa.expectations
+      - name: Generate DQ report
+        run: python -m src.reporting.dq_report
+      - name: On failure open issue
+        if: failure()
+        run: |
+          gh issue create --title "❌ Yacht‑OSINT nightly failed" \
+                          --body "Automated run failed – see Actions logs." \
+                          --assignees dima.kovtoniuk@tenderworks.com
