@@ -39,12 +39,27 @@ jobs:
           python -m src.extract.run_all
           python -m src.persist.duckdb_io
           python -m src.persist.exports
+
+      - name: List all exports on disk
+        run: |
+          echo "== exports directory =="
+          ls -R exports/
+
+      - name: Upload exports as GitHub artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: yacht-osint-exports
+          path: exports/
+        
       - name: Upload CSVs to Drive
         run: python -m src.persist.rclone_push
+        
       - name: Run QA checks
         run: python -m src.qa.expectations
+     
       - name: Generate DQ report
         run: python -m src.reporting.dq_report
+
       - name: On failure open issue
         if: failure()
         run: |
