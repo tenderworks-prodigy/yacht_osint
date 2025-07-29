@@ -1,47 +1,60 @@
-import requests
+from pathlib import Path
+
+import vcr
+import vcr.stubs
+
+vcr.stubs.VCRHTTPResponse.version_string = "HTTP/1.1"
+
 from src.scrape import parse
 
 
-class DummyResp:
-    def __init__(self, text="", status=200, headers=None, url="https://example.com/"):
-        self.text = text
-        self.status_code = status
-        self.headers = headers or {"content-type": "text/html"}
-        self.url = url
+class CallTracker:
+    def __init__(self):
+        self.called = []
 
-    def raise_for_status(self):
-        if self.status_code >= 400:
-            raise requests.HTTPError(self.status_code)
+    def stage(self, name, ret):
+        def _inner(*a, **k):
+            self.called.append(name)
+            return ret
 
-
-def test_link_and_anchor(monkeypatch):
-    html = """<html><head><link rel='alternate' type='application/rss+xml' href='/feed.xml'></head><body><a href='feed.xml'>feed</a></body></html>"""
-    monkeypatch.setattr(requests, "get", lambda *a, **k: DummyResp(html))
-    feeds = parse.discover_feeds("https://example.com")
-    assert feeds == ["https://example.com/feed.xml"]
+        return _inner
 
 
-def test_feedfinder_fallback(monkeypatch):
-    monkeypatch.setattr(requests, "get", lambda *a, **k: DummyResp(""))
+def test_discover_feed_pipeline(monkeypatch):
+    tracker = CallTracker()
+    monkeypatch.setattr(parse, "fetch_html", lambda url: "<html></html>")
+    monkeypatch.setattr(parse, "_stage_link_rel", tracker.stage("s1", ["a1"]))
     monkeypatch.setattr(
-        parse.feedfinder2, "find_feeds", lambda html: ["https://example.com/rss"]
+        parse, "_stage_anchor_heuristics", tracker.stage("s2", ["a1", "a2"])
     )
+    monkeypatch.setattr(
+        parse.feedfinder2, "find_feeds", tracker.stage("s3", ["a2", "a3"])
+    )
+    monkeypatch.setattr(parse, "probe_default_endpoints", tracker.stage("s4", ["a4"]))
     feeds = parse.discover_feeds("https://example.com")
-    assert feeds == ["https://example.com/rss"]
+    assert feeds == ["a1", "a2", "a3", "a4"]
+    assert tracker.called == ["s1", "s2", "s3", "s4"]
 
 
-def test_default_endpoint(monkeypatch):
-    monkeypatch.setattr(requests, "get", lambda *a, **k: DummyResp("<html></html>"))
-    head_resp = DummyResp("", headers={"content-type": "application/rss+xml"})
-    monkeypatch.setattr(requests, "head", lambda *a, **k: head_resp)
-    monkeypatch.setattr(parse.feedfinder2, "find_feeds", lambda html: [])
-    feeds = parse.discover_feeds("https://example.com/blog")
-    assert feeds == ["https://example.com/feed"]
+vcr_inst = vcr.VCR(cassette_library_dir=str(Path(__file__).parent / "cassettes"))
+vcr_inst.before_playback_response = (
+    lambda r: setattr(r, "version_string", "HTTP/1.1") or r
+)
 
 
-def test_no_feeds(monkeypatch):
-    monkeypatch.setattr(requests, "get", lambda *a, **k: DummyResp("<html></html>"))
-    monkeypatch.setattr(requests, "head", lambda *a, **k: DummyResp(status=404))
-    monkeypatch.setattr(parse.feedfinder2, "find_feeds", lambda html: [])
+@vcr_inst.use_cassette("rss.yaml")
+def test_integration_rss():
+    feeds = parse.discover_feeds("https://xkcd.com")
+    assert any("rss" in f for f in feeds)
+
+
+@vcr_inst.use_cassette("atom.yaml")
+def test_integration_atom():
+    feeds = parse.discover_feeds("https://blog.python.org")
+    assert any("feeds" in f for f in feeds)
+
+
+@vcr_inst.use_cassette("none.yaml")
+def test_integration_none():
     feeds = parse.discover_feeds("https://example.com")
     assert feeds == []

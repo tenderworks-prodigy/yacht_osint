@@ -14,6 +14,19 @@ def test_run_exports(tmp_path, monkeypatch):
     assert len(df) == 1
 
 
+def test_export_empty_db(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    import duckdb
+
+    con = duckdb.connect(str(tmp_path / "db.duckdb"))
+    con.execute("CREATE TABLE yachts (name VARCHAR, length_m DOUBLE)")
+    con.close()
+    out = exports.run(tmp_path / "db.duckdb")
+    df = pd.read_csv(out)
+    assert list(df.columns) == ["name", "length_m"]
+    assert len(df) == 0
+
+
 def test_run_exports_json(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     (tmp_path / "exports").mkdir()

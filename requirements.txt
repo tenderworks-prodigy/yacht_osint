@@ -22,5 +22,6 @@ tenacity==8.2.3
 python-dotenv==1.0.0
 feedfinder2==0.0.4
 tldextract==3.4.0
+vcrpy==5.1.0
 pytest==7.4.3
 pytest-cov==6.2.1

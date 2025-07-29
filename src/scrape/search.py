@@ -24,8 +24,8 @@ MAX_CONSECUTIVE = int(os.environ.get("CSE_MAX_CONSECUTIVE", "5"))
 _consecutive_429s = 0
 
 
-def search_sites(query: str, num: int = 10) -> List[str]:
-    """Query Google CSE and return unique root domains."""
+def _search_google(query: str, num: int = 10) -> List[str]:
+    """Query Google CSE and return root domains."""
     global _consecutive_429s
 
     if _consecutive_429s >= MAX_CONSECUTIVE:
@@ -78,14 +78,86 @@ def search_sites(query: str, num: int = 10) -> List[str]:
     return domains
 
 
-def run(queries: List[str], num: int = 10) -> List[str]:
-    all_domains: List[str] = []
+def _search_bing(query: str, num: int = 10) -> List[str]:
+    """Placeholder Bing search via API."""
+    api_key = os.environ.get("BING_API_KEY")
+    if not api_key:
+        return []
+    # minimal stub using same payload structure
+    url = os.environ.get("BING_API_URL", "https://api.bing.microsoft.com/v7.0/search")
+    try:
+        resp = requests.get(
+            url,
+            params={"q": query, "count": num},
+            headers={"Ocp-Apim-Subscription-Key": api_key},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+    except Exception:
+        log.warning("bing search failed for %s", query)
+        return []
+    links = [
+        item.get("url")
+        for item in data.get("webPages", {}).get("value", [])
+        if item.get("url")
+    ]
+    domains = []
+    for url in links:
+        ext = tldextract.extract(url)
+        domain = f"{ext.domain}.{ext.suffix}" if ext.suffix else ext.domain
+        if domain and domain not in domains:
+            domains.append(domain)
+    return domains
+
+
+def _search_duckduckgo(query: str, num: int = 10) -> List[str]:
+    api_url = os.environ.get("DDG_API_URL")
+    if not api_url:
+        return []
+    try:
+        resp = requests.get(
+            api_url, params={"q": query, "format": "json", "no_redirect": 1}, timeout=10
+        )
+        resp.raise_for_status()
+        data = resp.json()
+    except Exception:
+        log.warning("duckduckgo search failed for %s", query)
+        return []
+    links = [
+        r.get("firstURL") for r in data.get("RelatedTopics", []) if r.get("firstURL")
+    ]
+    domains = []
+    for url in links[:num]:
+        ext = tldextract.extract(url)
+        domain = f"{ext.domain}.{ext.suffix}" if ext.suffix else ext.domain
+        if domain and domain not in domains:
+            domains.append(domain)
+    return domains
+
+
+def search_sites(query: str, num: int = 10) -> List[str]:
+    results: List[str] = []
+    results.extend(_search_google(query, num))
+    results.extend(_search_bing(query, num))
+    results.extend(_search_duckduckgo(query, num))
+    return list(dict.fromkeys(results))
+
+
+def run(queries: List[str], num: int = 10) -> List[dict]:
+    results: List[dict] = []
     for q in queries:
         try:
-            all_domains.extend(search_sites(q, num))
+            domains = search_sites(q, num)
         except Exception as exc:  # pragma: no cover - logging
             log.warning("search failed for %s: %s", q, exc)
-    # dedupe while preserving order
-    deduped = list(dict.fromkeys(all_domains))
-    log.info("\u2705 %d queries, %d unique domains", len(queries), len(deduped))
-    return deduped
+            domains = []
+        ts = int(time.time())
+        for d in domains:
+            results.append({"domain": d, "timestamp": ts})
+    deduped: dict[str, dict] = {}
+    for item in results:
+        deduped[item["domain"]] = item
+    out = list(deduped.values())
+    log.info("\u2705 %d queries, %d unique domains", len(queries), len(out))
+    return out

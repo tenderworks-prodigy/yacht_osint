@@ -1,5 +1,6 @@
 import logging
 import json
+import os
 from pathlib import Path
 
 import duckdb
@@ -33,12 +34,12 @@ def run(db_path: Path = Path("yachts.duckdb")) -> Path:
             except Exception as exc:  # pragma: no cover - data errors
                 log.warning("failed to load %s: %s", json_path, exc)
 
-    if df.empty:
-        raise RuntimeError("yachts table is empty")
-
     exports = Path("exports")
     exports.mkdir(parents=True, exist_ok=True)
     out = exports / "yachts.csv"
+    if df.empty:
+        df = pd.DataFrame(columns=["name", "length_m"])
     df.to_csv(out, index=False)
     log.info("saved %d rows -> %s", len(df), out)
+    print("EXPORTS DIR:", os.listdir("exports"))
     return out

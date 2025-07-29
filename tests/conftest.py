@@ -1,3 +1,7 @@
+import logging
+
+logging.getLogger("urllib3.connectionpool").disabled = True
+
 import sys
 from pathlib import Path
 

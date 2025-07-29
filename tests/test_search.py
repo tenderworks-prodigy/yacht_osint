@@ -2,7 +2,7 @@ import os
 from typing import List
 
 
-from src.scrape.search import search_sites
+from src.scrape.search import search_sites, run
 
 
 class DummyResponse:
@@ -32,6 +32,15 @@ def test_search_sites(monkeypatch):
     os.environ["GOOGLE_CSE_CX"] = "2"
     domains = search_sites("test")
     assert domains == ["example.com", "other.com"]
+
+
+def test_run_timestamp(monkeypatch):
+    monkeypatch.setattr(
+        "src.scrape.search.search_sites", lambda q, num=10: ["a.com", "b.com"]
+    )
+    out = run(["a"])
+    assert isinstance(out[0]["timestamp"], int)
+    assert {d["domain"] for d in out} == {"a.com", "b.com"}
 
 
 def test_search_sites_rate_limit(monkeypatch):
