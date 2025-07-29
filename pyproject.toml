@@ -36,6 +36,7 @@ dependencies = [
     "python-dotenv==1.0.0",
     "feedfinder2==0.0.4",
     "tldextract==3.4.0",
+    "python-json-logger==2.0.7",
 ]
 
 [project.optional-dependencies]
@@ -49,3 +50,10 @@ dev = [
 
 [project.scripts]
 yacht-osint = "src.cli:run"
+
+[tool.ruff]
+line-length = 100
+extend-select = ["I", "UP", "F", "B", "E", "W"]
+
+[tool.black]
+line-length = 100
