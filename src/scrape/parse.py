@@ -43,6 +43,7 @@ def _stage_link_rel(html: str, base: str) -> list[str]:
             href = link.get("href")
             if href:
                 feeds.append(urljoin(base, href))
+    log.debug("link-rel candidates: %s", feeds)
     return feeds
 
 
@@ -53,6 +54,7 @@ def _stage_anchor_heuristics(html: str, base: str) -> list[str]:
         href = a["href"]
         if any(token in href.lower() for token in _ANCHOR_TOKENS):
             feeds.append(urljoin(base, href))
+    log.debug("anchor candidates: %s", feeds)
     return feeds
 
 
@@ -70,7 +72,9 @@ def _parse_feed(url: str) -> list[dict]:
 def _probe_extensions(url: str) -> list[str]:
     parsed = urlparse(url)
     root = f"{parsed.scheme}://{parsed.netloc}"
-    return [root + ext for ext in _EXT_PROBES]
+    urls = [root + ext for ext in _EXT_PROBES]
+    log.debug("extension probes: %s", urls)
+    return urls
 
 
 def _validate_feed(url: str) -> bool:
@@ -105,6 +109,7 @@ def discover_feeds(url: str) -> list[str]:
     seen: set[str] = set()
     for name, func in approaches:
         candidates = func()
+        log.debug("%s produced %s", name, candidates)
         valid: list[str] = []
         for c in candidates:
             if c in seen:
