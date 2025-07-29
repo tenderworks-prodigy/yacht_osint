@@ -3,22 +3,19 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Dict, List
 
 import feedfinder2
 import feedparser
 from bs4 import BeautifulSoup
 
 # silence feedfinder2 warnings by forcing the lxml parser
-feedfinder2.BeautifulSoup = lambda markup, *a, **k: BeautifulSoup(
-    markup, features="lxml", *a, **k
-)
+feedfinder2.BeautifulSoup = lambda markup, *a, **k: BeautifulSoup(markup, "lxml", *a, **k)
 
 log = logging.getLogger(__name__)
 
 
-def discover_feeds(domains: List[str]) -> Dict[str, List[str]]:
-    feeds: Dict[str, List[str]] = {}
+def discover_feeds(domains: list[str]) -> dict[str, List[str]]:
+    feeds: dict[str, list[str]] = {}
     for domain in domains:
         url = f"https://{domain}"
         try:
@@ -30,10 +27,8 @@ def discover_feeds(domains: List[str]) -> Dict[str, List[str]]:
     return feeds
 
 
-def fetch_entries(
-    feed_map: Dict[str, List[str]], limit: int = 20
-) -> Dict[str, List[dict]]:
-    results: Dict[str, List[dict]] = {}
+def fetch_entries(feed_map: dict[str, list[str]], limit: int = 20) -> dict[str, list[dict]]:
+    results: dict[str, list[dict]] = {}
     for domain, urls in feed_map.items():
         results[domain] = []
         for url in urls:
@@ -45,7 +40,7 @@ def fetch_entries(
     return results
 
 
-def run(domains: List[str]) -> Dict[str, List[dict]]:
+def run(domains: list[str]) -> dict[str, List[dict]]:
     feeds = discover_feeds(domains)
     return fetch_entries(feeds)
 
