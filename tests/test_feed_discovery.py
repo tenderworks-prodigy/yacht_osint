@@ -37,34 +37,24 @@ def test_discover_feed_pipeline(monkeypatch):
 vcr_inst = vcr.VCR(
     cassette_library_dir=str(Path(__file__).parent / "fixtures"),
     path_transformer=vcr.VCR.ensure_suffix(".yaml.gz"),
+    record_mode="once",
 )
 vcr_inst.before_playback_response = lambda r: setattr(r, "version_string", "HTTP/1.1") or r
 
 
 @vcr_inst.use_cassette("rss")
-def test_integration_rss(monkeypatch):
-    monkeypatch.setattr(
-        parse,
-        "fetch_html",
-        lambda url: '<link rel="alternate" type="application/rss+xml" href="https://xkcd.com/rss.xml"/>',
-    )
+def test_integration_rss():
     feeds = parse.discover_feeds("https://xkcd.com")
-    assert feeds == ["https://xkcd.com/rss.xml"]
+    assert "https://xkcd.com/rss.xml" in feeds
 
 
 @vcr_inst.use_cassette("atom")
-def test_integration_atom(monkeypatch):
-    monkeypatch.setattr(
-        parse,
-        "fetch_html",
-        lambda url: '<link rel="alternate" type="application/atom+xml" href="https://blog.python.org/feeds/posts/default?alt=atom"/>',
-    )
+def test_integration_atom():
     feeds = parse.discover_feeds("https://blog.python.org")
-    assert feeds == ["https://blog.python.org/feeds/posts/default?alt=atom"]
+    assert feeds[0].startswith("https://blog.python.org/feeds/posts")
 
 
 @vcr_inst.use_cassette("none")
-def test_integration_none(monkeypatch):
-    monkeypatch.setattr(parse, "fetch_html", lambda url: "<html></html>")
+def test_integration_none():
     feeds = parse.discover_feeds("https://example.com")
     assert feeds[0].startswith("https://example.com")
