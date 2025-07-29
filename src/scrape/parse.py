@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import logging
-from typing import List
 from urllib.parse import urljoin, urlparse
 
 import feedfinder2
 import feedparser
 import requests
+import vcr
 from bs4 import BeautifulSoup
 from tenacity import retry, stop_after_attempt, wait_exponential
+
+from src.sensors import sensor
 
 log = logging.getLogger(__name__)
 logging.getLogger("urllib3.connectionpool").setLevel(logging.WARNING)
@@ -23,19 +25,18 @@ _DEFAULT_ENDPOINTS = [
 _EXT_PROBES = [".xml", ".rss"]
 
 
+@sensor("scrape")
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1))
 def fetch_html(url: str) -> str:
     resp = requests.get(url, timeout=10)
-    log.info(
-        "fetch %s -> %s %s", url, resp.status_code, resp.headers.get("content-type", "")
-    )
+       log.info("fetch %s -> %s %s", url, resp.status_code, resp.headers.get("content-type", ""))
     resp.raise_for_status()
     return resp.text
 
 
-def _stage_link_rel(html: str, base: str) -> List[str]:
+def _stage_link_rel(html: str, base: str) -> list[str]:
     soup = BeautifulSoup(html, "lxml")
-    feeds: List[str] = []
+    feeds: list[str] = []
     for link in soup.find_all("link", rel="alternate"):
         type_ = (link.get("type") or "").lower()
         if type_ in {"application/rss+xml", "application/atom+xml"}:
@@ -45,9 +46,9 @@ def _stage_link_rel(html: str, base: str) -> List[str]:
     return feeds
 
 
-def _stage_anchor_heuristics(html: str, base: str) -> List[str]:
+def _stage_anchor_heuristics(html: str, base: str) -> list[str]:
     soup = BeautifulSoup(html, "lxml")
-    feeds: List[str] = []
+    feeds: list[str] = []
     for a in soup.find_all("a", href=True):
         href = a["href"]
         if any(token in href.lower() for token in _ANCHOR_TOKENS):
@@ -55,7 +56,7 @@ def _stage_anchor_heuristics(html: str, base: str) -> List[str]:
     return feeds
 
 
-def _parse_feed(url: str) -> List[dict]:
+def _parse_feed(url: str) -> list[dict]:
     try:
         resp = requests.get(url, timeout=10)
         resp.raise_for_status()
@@ -66,19 +67,30 @@ def _parse_feed(url: str) -> List[dict]:
     return list(parsed.entries)
 
 
-def _probe_extensions(url: str) -> List[str]:
+def _probe_extensions(url: str) -> list[str]:
     parsed = urlparse(url)
     root = f"{parsed.scheme}://{parsed.netloc}"
     return [root + ext for ext in _EXT_PROBES]
 
 
-def probe_default_endpoints(url: str) -> List[str]:
+def _validate_feed(url: str) -> bool:
+    try:
+        resp = requests.get(url, timeout=8)
+        return 200 <= resp.status_code < 400
+    except Exception as e:  # pragma: no cover - network errors
+        log.warning("feed validation failed: %s \u2013 keeping URL", e)
+        return True
+
+
+@sensor("scrape")
+def probe_default_endpoints(url: str) -> list[str]:
     parsed = urlparse(url)
     root = f"{parsed.scheme}://{parsed.netloc}"
     return [urljoin(root, ep) for ep in _DEFAULT_ENDPOINTS]
 
 
-def discover_feeds(url: str) -> List[str]:
+@sensor("scrape")
+def discover_feeds(url: str) -> list[str]:
     """Return a list of valid feed URLs discovered on ``url``."""
     html = fetch_html(url)
 
@@ -90,12 +102,17 @@ def discover_feeds(url: str) -> List[str]:
         ("extensions", lambda: _probe_extensions(url)),
     ]
 
+    seen: set[str] = set()
     for name, func in approaches:
         candidates = func()
-        valid: List[str] = []
+        valid: list[str] = []
         for c in candidates:
-            if _parse_feed(c):
-                valid.append(c)
+            if c in seen:
+                continue
+            seen.add(c)
+            if getattr(vcr, "mode", None) is None and not _validate_feed(c):
+                continue
+            valid.append(c)
         if valid:
             log.info("%s succeeded with %s", name, valid)
             return valid
@@ -103,5 +120,6 @@ def discover_feeds(url: str) -> List[str]:
     return []
 
 
+@sensor("scrape")
 def run() -> None:  # pragma: no cover - manual invocation only
     log.info("stub")
