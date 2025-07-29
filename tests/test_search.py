@@ -1,12 +1,10 @@
 import os
-from typing import List
 
-
-from src.scrape.search import search_sites, run
+from src.scrape.search import run, search_sites
 
 
 class DummyResponse:
-    def __init__(self, items: List[str]):
+    def __init__(self, items: list[str]):
         self._items = items
         self.status_code = 200
 
@@ -35,9 +33,7 @@ def test_search_sites(monkeypatch):
 
 
 def test_run_timestamp(monkeypatch):
-    monkeypatch.setattr(
-        "src.scrape.search.search_sites", lambda q, num=10: ["a.com", "b.com"]
-    )
+    monkeypatch.setattr("src.scrape.search.search_sites", lambda q, num=10: ["a.com", "b.com"])
     out = run(["a"])
     assert isinstance(out[0]["timestamp"], int)
     assert {d["domain"] for d in out} == {"a.com", "b.com"}
