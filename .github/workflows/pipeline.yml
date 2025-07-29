@@ -4,6 +4,10 @@ on:
     - cron: '0 2 * * *'
   workflow_dispatch:
 
+permissions:
+  contents: read
+  issues: write
+  
 jobs:
   build:
     environment: DATA
@@ -30,9 +34,9 @@ jobs:
         run: |
           pip install ruff black
 
-      - name: Check formatting
+      - name: Run lint & format
         run: |
-          ruff --fix .
+          ruff fix .
           black .
           git diff --exit-code
 
