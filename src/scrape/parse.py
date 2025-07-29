@@ -29,15 +29,27 @@ _EXT_PROBES = [".xml", ".rss"]
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1))
 def fetch_html(url: str) -> str:
     resp = requests.get(url, timeout=10)
-    log.info("fetch %s -> %s %s", url, resp.status_code, resp.headers.get("content-type", ""))
+    ct = resp.headers.get("content-type", "")
+    links = BeautifulSoup(resp.text, "lxml").find_all("link")
+    log.debug(
+        "fetch_html %s -> %s %s with %d <link> tags",
+        url,
+        resp.status_code,
+        ct,
+        len(links),
+    )
+    log.info("fetch %s -> %s %s", url, resp.status_code, ct)
     resp.raise_for_status()
     return resp.text
 
 
+@sensor("scrape")
 def _stage_link_rel(html: str, base: str) -> list[str]:
     soup = BeautifulSoup(html, "lxml")
+    links = soup.find_all("link", rel="alternate")
+    log.debug("_stage_link_rel scanning %d link tags", len(links))
     feeds: list[str] = []
-    for link in soup.find_all("link", rel="alternate"):
+    for link in links:
         type_ = (link.get("type") or "").lower()
         if type_ in {"application/rss+xml", "application/atom+xml"}:
             href = link.get("href")
@@ -47,10 +59,13 @@ def _stage_link_rel(html: str, base: str) -> list[str]:
     return feeds
 
 
+@sensor("scrape")
 def _stage_anchor_heuristics(html: str, base: str) -> list[str]:
     soup = BeautifulSoup(html, "lxml")
+    anchors = soup.find_all("a", href=True)
+    log.debug("_stage_anchor_heuristics scanning %d anchors", len(anchors))
     feeds: list[str] = []
-    for a in soup.find_all("a", href=True):
+    for a in anchors:
         href = a["href"]
         if any(token in href.lower() for token in _ANCHOR_TOKENS):
             feeds.append(urljoin(base, href))
@@ -69,6 +84,7 @@ def _parse_feed(url: str) -> list[dict]:
     return list(parsed.entries)
 
 
+@sensor("scrape")
 def _probe_extensions(url: str) -> list[str]:
     parsed = urlparse(url)
     root = f"{parsed.scheme}://{parsed.netloc}"
@@ -90,7 +106,9 @@ def _validate_feed(url: str) -> bool:
 def probe_default_endpoints(url: str) -> list[str]:
     parsed = urlparse(url)
     root = f"{parsed.scheme}://{parsed.netloc}"
-    return [urljoin(root, ep) for ep in _DEFAULT_ENDPOINTS]
+    urls = [urljoin(root, ep) for ep in _DEFAULT_ENDPOINTS]
+    log.debug("probe_default_endpoints -> %s", urls)
+    return urls
 
 
 @sensor("scrape")
@@ -108,7 +126,11 @@ def discover_feeds(url: str) -> list[str]:
 
     seen: set[str] = set()
     for name, func in approaches:
+        if name in {"feedfinder2", "defaults"}:
+            log.debug("%s branch entered", name)
         candidates = func()
+        if name in {"feedfinder2", "defaults"}:
+            log.debug("%s branch returned %s", name, candidates)
         log.debug("%s produced %s", name, candidates)
         valid: list[str] = []
         for c in candidates:

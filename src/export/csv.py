@@ -39,3 +39,7 @@ def run(db_path: Path = Path("yachts.duckdb")) -> Path:
         df.to_csv(f, index=False)
     log.info("saved %d rows -> %s", len(df), out)
     return out
+
+
+if __name__ == "__main__":  # pragma: no cover - CLI helper
+    run()
