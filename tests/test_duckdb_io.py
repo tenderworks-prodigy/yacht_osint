@@ -1,6 +1,6 @@
+import duckdb
 import pandas as pd
 
-import duckdb
 from src.persist import duckdb_io
 
 
