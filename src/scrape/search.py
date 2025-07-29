@@ -4,13 +4,11 @@ import logging
 import os
 import random
 import time
-from typing import List
-
-from src.common.env import require_env
-
-import tldextract
 
 import requests
+import tldextract
+
+from src.common.env import require_env
 
 log = logging.getLogger(__name__)
 CSE_URL = "https://www.googleapis.com/customsearch/v1"
@@ -24,7 +22,7 @@ MAX_CONSECUTIVE = int(os.environ.get("CSE_MAX_CONSECUTIVE", "5"))
 _consecutive_429s = 0
 
 
-def _search_google(query: str, num: int = 10) -> List[str]:
+def _search_google(query: str, num: int = 10) -> list[str]:
     """Query Google CSE and return root domains."""
     global _consecutive_429s
 
@@ -66,7 +64,7 @@ def _search_google(query: str, num: int = 10) -> List[str]:
         log.warning("rate limit persisted after %s retries", MAX_RETRIES)
         return []
 
-    domains: List[str] = []
+    domains: list[str] = []
     for item in payload.get("items", []):
         url = item.get("link")
         if not url:
@@ -78,7 +76,7 @@ def _search_google(query: str, num: int = 10) -> List[str]:
     return domains
 
 
-def _search_bing(query: str, num: int = 10) -> List[str]:
+def _search_bing(query: str, num: int = 10) -> list[str]:
     """Placeholder Bing search via API."""
     api_key = os.environ.get("BING_API_KEY")
     if not api_key:
@@ -98,9 +96,7 @@ def _search_bing(query: str, num: int = 10) -> List[str]:
         log.warning("bing search failed for %s", query)
         return []
     links = [
-        item.get("url")
-        for item in data.get("webPages", {}).get("value", [])
-        if item.get("url")
+        item.get("url") for item in data.get("webPages", {}).get("value", []) if item.get("url")
     ]
     domains = []
     for url in links:
@@ -111,7 +107,7 @@ def _search_bing(query: str, num: int = 10) -> List[str]:
     return domains
 
 
-def _search_duckduckgo(query: str, num: int = 10) -> List[str]:
+def _search_duckduckgo(query: str, num: int = 10) -> list[str]:
     api_url = os.environ.get("DDG_API_URL")
     if not api_url:
         return []
@@ -124,9 +120,7 @@ def _search_duckduckgo(query: str, num: int = 10) -> List[str]:
     except Exception:
         log.warning("duckduckgo search failed for %s", query)
         return []
-    links = [
-        r.get("firstURL") for r in data.get("RelatedTopics", []) if r.get("firstURL")
-    ]
+      links = [r.get("firstURL") for r in data.get("RelatedTopics", []) if r.get("firstURL")]
     domains = []
     for url in links[:num]:
         ext = tldextract.extract(url)
@@ -136,16 +130,16 @@ def _search_duckduckgo(query: str, num: int = 10) -> List[str]:
     return domains
 
 
-def search_sites(query: str, num: int = 10) -> List[str]:
-    results: List[str] = []
+def search_sites(query: str, num: int = 10) -> list[str]:
+    results: list[str] = []
     results.extend(_search_google(query, num))
     results.extend(_search_bing(query, num))
     results.extend(_search_duckduckgo(query, num))
     return list(dict.fromkeys(results))
 
 
-def run(queries: List[str], num: int = 10) -> List[dict]:
-    results: List[dict] = []
+def run(queries: list[str], num: int = 10) -> list[dict]:
+    results: list[dict] = []
     for q in queries:
         try:
             domains = search_sites(q, num)
