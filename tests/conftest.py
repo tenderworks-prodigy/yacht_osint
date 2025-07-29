@@ -1,5 +1,8 @@
+import logging
 import sys
 from pathlib import Path
+
+logging.getLogger("urllib3.connectionpool").disabled = True
 
 # ensure project root is on the import path
 ROOT = Path(__file__).resolve().parents[1]

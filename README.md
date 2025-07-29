@@ -11,6 +11,21 @@ load these CSVs for analysis.
 pip install -r requirements.txt
 ```
 
+Create a `.env` file in the project root with the required secrets:
+
+```
+HF_TOKEN=...
+GROQ_API_KEY=...
+GOOGLE_CSE_API_KEY=...
+GOOGLE_CSE_CX=...
+DRIVE_FOLDER_ID=...
+SPREADSHEET_ID=...
+```
+
+Place your Google service account JSON somewhere locally and set
+`GOOGLE_APPLICATION_CREDENTIALS` to its path. Rclone must also be configured
+with a remote named `remote`.
+
 ## Required secrets
 
 Environment variables and GitHub secrets used by the pipeline:

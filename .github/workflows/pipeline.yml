@@ -4,6 +4,10 @@ on:
     - cron: '0 2 * * *'
   workflow_dispatch:
 
+permissions:
+  contents: read
+  issues: write
+  
 jobs:
   build:
     environment: DATA
@@ -23,11 +27,34 @@ jobs:
         with:
           python-version: '3.11'
 
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: ${{ runner.os }}-pip-
+
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Install dev tools
+        run: |
+          pip install 'ruff==0.12.5' black
+
+      - name: Run lint
+        run: |
+          ruff check --fix .
+          black --check .
+
       - name: Run unit tests
-        run: pytest -q
+        run: |
+          pytest -q --cov=src --cov-report=xml
+
+      - name: Upload coverage
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage.xml
 
       - name: Ensure CSE key present
         run: |
@@ -38,6 +65,13 @@ jobs:
           head <<<"$GOOGLE_CSE_API_KEY" -c 1 >/dev/null
           head <<<"$GOOGLE_CSE_CX" -c 1 >/dev/null
 
+      - name: Run scraping
+        run: |
+          python -m src.scrape.crawl
+          python -m src.scrape.wayback
+          python -m src.scrape.parse
+          python -m src.extract.run_all
+
       - name: Run OSINT pipeline
         run: |
           set -o errexit -o nounset -o pipefail
@@ -45,10 +79,6 @@ jobs:
           mkdir -p exports
           ls -a exports/
           python -m src.cli
-          python -m src.scrape.crawl
-          python -m src.scrape.wayback
-          python -m src.scrape.parse
-          python -m src.extract.run_all
           python -m src.persist.duckdb_io
           python -m src.persist.new_data
           python -m src.persist.exports
@@ -74,6 +104,9 @@ jobs:
               sys.exit("Missing columns")
           EOF
 
+      - name: Generate DQ report
+        run: python -m src.reporting.dq_report
+
       - name: Upload exports as artifact
         if: always()
         uses: actions/upload-artifact@v4
@@ -87,9 +120,6 @@ jobs:
       - name: Run QA checks
         run: python -m src.qa.expectations
 
-      - name: Generate DQ report
-        run: python -m src.reporting.dq_report
-
       - name: Check gh version
         run: gh --version
 
@@ -98,8 +128,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh issue create --title "❌ Yacht-OSINT nightly failed" \
-                          --body "Automated run failed – see Actions logs." \
-                          --dry-run
-          gh issue create --title "❌ Yacht-OSINT nightly failed" \
-                          --body "Automated run failed – see Actions logs."
+          gh issue create \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "❌ Yacht-OSINT nightly failed" \
+            --body "Automated run failed – see Actions logs."
