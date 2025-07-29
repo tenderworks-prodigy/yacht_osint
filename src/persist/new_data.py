@@ -26,7 +26,5 @@ def run(data: dict | None = None, verbose: bool = False) -> dict:
 
 if __name__ == "__main__":  # pragma: no cover - manual runs
     if not logging.getLogger().handlers:
-        logging.basicConfig(
-            level=logging.INFO, format="%(asctime)s %(levelname)s:%(message)s"
-        )
+           logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s:%(message)s")
     run(verbose=True)
