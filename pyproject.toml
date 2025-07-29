@@ -53,6 +53,8 @@ yacht-osint = "src.cli:run"
 
 [tool.ruff]
 line-length = 100
+
+[tool.ruff.lint]
 extend-select = ["I", "UP", "F", "B", "E", "W"]
 
 [tool.black]
