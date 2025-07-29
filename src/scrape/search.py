@@ -120,7 +120,9 @@ def _search_duckduckgo(query: str, num: int = 10) -> list[str]:
     except Exception:
         log.warning("duckduckgo search failed for %s", query)
         return []
-        links = [r.get("firstURL") for r in data.get("RelatedTopics", []) if r.get("firstURL")]
+
+    links = [r.get("firstURL") for r in data.get("RelatedTopics", []) if r.get("firstURL")]
+
     domains = []
     for url in links[:num]:
         ext = tldextract.extract(url)
