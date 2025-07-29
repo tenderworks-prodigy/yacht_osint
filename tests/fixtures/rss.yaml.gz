@@ -105,7 +105,7 @@ interactions:
       accept-ranges:
       - bytes
       age:
-      - '152'
+      - '7'
       cache-control:
       - max-age=300
       content-encoding:
@@ -115,7 +115,7 @@ interactions:
       content-type:
       - text/html; charset=UTF-8
       date:
-      - Tue, 29 Jul 2025 15:22:40 GMT
+      - Tue, 29 Jul 2025 15:35:30 GMT
       etag:
       - W/"6887e793-1c16"
       expires:
@@ -131,11 +131,11 @@ interactions:
       x-cache-hits:
       - '1'
       x-envoy-upstream-service-time:
-      - '59'
+      - '61'
       x-served-by:
-      - cache-dfw-kdfw8210056-DFW
+      - cache-dfw-kdfw8210143-DFW
       x-timer:
-      - S1753802561.987011,VS0,VE1
+      - S1753803330.250357,VS0,VE1
     status:
       code: 200
       message: OK

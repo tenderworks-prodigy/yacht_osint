@@ -37,7 +37,7 @@ interactions:
       alt-svc:
       - h3=":443"; ma=93600,h3-29=":443"; ma=93600
       cache-control:
-      - max-age=1002
+      - max-age=3507
       content-encoding:
       - gzip
       content-length:
@@ -45,7 +45,7 @@ interactions:
       content-type:
       - text/html
       date:
-      - Tue, 29 Jul 2025 15:23:15 GMT
+      - Tue, 29 Jul 2025 15:35:30 GMT
       etag:
       - '"84238dfc8092e5d9c0dac8ef93371a07:1736799080.121134"'
       last-modified:
@@ -55,7 +55,7 @@ interactions:
       vary:
       - Accept-Encoding
       x-envoy-upstream-service-time:
-      - '139'
+      - '152'
     status:
       code: 200
       message: OK

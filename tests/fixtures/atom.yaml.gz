@@ -1672,7 +1672,7 @@ interactions:
         class='clear'></div>\n</div>\n</div><div class='widget HTML' data-version='1'
         id='HTML3'>\n<h2 class='title'>Copyright</h2>\n<div class='widget-content'>\n<a
         rel=\"license\" href=\"http://creativecommons.org/licenses/by-nc-sa/3.0/\"><img
-        alt=\"Creative Commons License\" style=\"border-width:0\" src=\"https://lh3.googleusercontent.com/blogger_img_proxy/AEn0k_tf3I1vrTRd_7z9xb37ZBeG7OM2un3A36MLw-oge1SG7ehwBolNNNa4gOQxUfMuyr8_YuCo57uXjkvt6rocGnoWoWXCZM4bd7sQhC6FdEhh0w9CgNGazCDk=s0-d\"></a><br
+        alt=\"Creative Commons License\" style=\"border-width:0\" src=\"https://lh3.googleusercontent.com/blogger_img_proxy/AEn0k_th8mdXtGeCbiRbLNLidwH4WzJJ-81mbB1uG1yW_5pyMsA6rceW0JnbDxD1ahbwjvtCIKchhOtWgXaPESQ4e8Jf1PPUKTui7yv5x8nja6udi4hfg8ofz8jP=s0-d\"></a><br
         /><span xmlns:dct=\"http://purl.org/dc/terms/\" href=\"http://purl.org/dc/dcmitype/Text\"
         property=\"dct:title\" rel=\"dct:type\">Python Insider</span> by <a xmlns:cc=\"http://creativecommons.org/ns#\"
         href=\"http://www.python.org/\" property=\"cc:attributionName\" rel=\"cc:attributionURL\">the
@@ -1686,7 +1686,7 @@ interactions:
         target='_blank'>Blogger</a>.\n</div>\n<div class='clear'></div>\n</div></div>\n</div>\n</div>\n</aside>\n<div
         style='clear:both'>&nbsp;</div>\n</div>\n\n<script type=\"text/javascript\"
         src=\"https://www.blogger.com/static/v1/widgets/3000588928-widgets.js\"></script>\n<script
-        type='text/javascript'>\nwindow['__wavt'] = 'AOuZoY7Bos3ikP9lDYEpODRJvDvQosmuZg:1753802435496';_WidgetManager._Init('//www.blogger.com/rearrange?blogID\\x3d3941553907430899163','//pythoninsider.blogspot.com/','3941553907430899163');\n_WidgetManager._SetDataContext([{'name':
+        type='text/javascript'>\nwindow['__wavt'] = 'AOuZoY5ZtEddE-Yw9pKDbuM9mTvRKB1V1g:1753803041028';_WidgetManager._Init('//www.blogger.com/rearrange?blogID\\x3d3941553907430899163','//pythoninsider.blogspot.com/','3941553907430899163');\n_WidgetManager._SetDataContext([{'name':
         'blog', 'data': {'blogId': '3941553907430899163', 'title': 'Python Insider',
         'url': 'https://pythoninsider.blogspot.com/', 'canonicalUrl': 'https://pythoninsider.blogspot.com/',
         'homepageUrl': 'https://pythoninsider.blogspot.com/', 'searchUrl': 'https://pythoninsider.blogspot.com/search',
@@ -1763,23 +1763,16 @@ interactions:
       - private, max-age=0
       content-encoding:
       - gzip
-      content-security-policy:
-      - upgrade-insecure-requests
-      content-security-policy-report-only:
-      - 'default-src https: blob: data: ''unsafe-inline'' ''unsafe-eval''; report-to
-        blogspot; report-uri https://www.blogger.com/cspreport'
       content-type:
       - text/html; charset=UTF-8
       date:
-      - Tue, 29 Jul 2025 15:23:11 GMT
+      - Tue, 29 Jul 2025 15:35:30 GMT
       etag:
       - W/"4e50f1f1e6aea1309a53eb57cf2eead310a79291d2758e5ee1289fb1be60f537"
       expires:
-      - Tue, 29 Jul 2025 15:23:11 GMT
+      - Tue, 29 Jul 2025 15:35:30 GMT
       last-modified:
       - Tue, 22 Jul 2025 20:13:02 GMT
-      report-to:
-      - '{"group":"blogspot","max_age":2592000,"endpoints":[{"url":"https://www.blogger.com/cspreport"}]}'
       server:
       - envoy
       transfer-encoding:
@@ -1793,11 +1786,11 @@ interactions:
       x-content-type-options:
       - nosniff
       x-envoy-upstream-service-time:
-      - '175'
+      - '171'
       x-served-by:
-      - cache-lga21983-LGA, cache-dfw-kdfw8210131-DFW
+      - cache-lga21964-LGA, cache-dfw-kdfw8210168-DFW
       x-timer:
-      - S1753802591.021399,VS0,VE131
+      - S1753803330.420147,VS0,VE121
       x-xss-protection:
       - 1; mode=block
     status:
