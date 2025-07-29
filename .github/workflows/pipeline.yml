@@ -25,6 +25,10 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r requirements.txt
+        
+      - name: Install dev tools
+        run: |
+          pip install ruff black
 
       - name: Check formatting
         run: |
