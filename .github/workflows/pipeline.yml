@@ -27,21 +27,34 @@ jobs:
         with:
           python-version: '3.11'
 
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: ${{ runner.os }}-pip-
+
       - name: Install dependencies
         run: pip install -r requirements.txt
-        
+
       - name: Install dev tools
         run: |
           pip install 'ruff>=0.13.0' black
 
-      - name: Run lint & format
+      - name: Run lint
         run: |
-          ruff fix .
-          black .
-          git diff --exit-code
+          ruff check --fix .
+          black --check .
 
       - name: Run unit tests
-        run: pytest -q
+        run: |
+          pytest -q --cov=src --cov-report=xml
+
+      - name: Upload coverage
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage.xml
 
       - name: Ensure CSE key present
         run: |
@@ -115,5 +128,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh issue create --title "❌ Yacht-OSINT nightly failed" \
-                          --body "Automated run failed – see Actions logs."
+          gh issue create \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "❌ Yacht-OSINT nightly failed" \
+            --body "Automated run failed – see Actions logs."

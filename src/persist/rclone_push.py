@@ -13,6 +13,7 @@ log = logging.getLogger(__name__)
 
 @retry(stop=stop_after_attempt(3), wait=wait_fixed(5))
 def _sync(src: Path, dest: str) -> None:
+    """Run rclone sync with retries."""
     subprocess.check_call(["rclone", "sync", str(src), dest])
 
 
