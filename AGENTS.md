@@ -67,3 +67,43 @@ If **`main`** pipeline fails twice consecutively:
 3. Open Issue tagging `@tenderworks-prodigy/maintainers`
 
 ---
+## Large-Output & Context-Handling Guidelines
+
+**Prevent stdout overflows** (no single line > 1600 bytes) by fetching and slicing before printing:
+
+1. **Fetch programmatically**  
+   Default to a Python pattern (requests + BeautifulSoup + textwrap) to download and wrap pages.  
+   ```python
+   import requests, textwrap
+   from bs4 import BeautifulSoup
+
+   URL  = "https://example.com/large-page"
+   html = requests.get(URL, timeout=15).text                 # ① pull page
+   text = BeautifulSoup(html, "html.parser").get_text()      # ② strip tags
+   safe = "\n".join(textwrap.wrap(text, width=1600))         # ③ hard-wrap
+   print(safe[:4000])                                        # ④ print only the needed snippet
+
+2. **Avoid giant single-line prints**
+   Wrap or slice parsed text (textwrap.wrap(text, 1600) or text[:4000]) so no line exceeds the limit.
+
+3. **Targeted keyword/regex search**
+Filter for relevance first (e.g. only lines containing a keyword or matching a regex) to avoid dumping entire pages.
+
+4. **Chunk large outputs**
+If you need more context, emit in segments:
+
+print(safe[0:4000])
+print(safe[4000:8000])
+…and so on
+
+5. **Leverage cached/local docs**
+Store frequently-used references under knowledge/ in pre-wrapped form to avoid repeated external fetches.
+
+6. **Complete context over speed**
+When in doubt, fetch and slice multiple segments rather than answering prematurely with missing info.
+
+7. **Maintain reproducibility**
+Install any extra parsing libs in your venv (e.g. pip install bs4) so environments stay predictable
+Feel free to drop or adjust any bullet to match your style—this covers all the bases for safe, complete context retrieval.
+
+
