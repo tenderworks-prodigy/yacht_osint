@@ -5,6 +5,7 @@ from typing import List
 from urllib.parse import urljoin, urlparse
 
 import feedfinder2
+import feedparser
 import requests
 from bs4 import BeautifulSoup
 from tenacity import retry, stop_after_attempt, wait_exponential
@@ -12,8 +13,14 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 log = logging.getLogger(__name__)
 logging.getLogger("urllib3.connectionpool").setLevel(logging.WARNING)
 
-_ANCHOR_TOKENS = [".rss", ".xml", "/feed", "format=rss"]
-_DEFAULT_ENDPOINTS = ["/feed", "/rss", "/atom", "/feeds/posts/default"]
+_ANCHOR_TOKENS = ["feed", "rss", "atom"]
+_DEFAULT_ENDPOINTS = [
+    "/feed",
+    "/rss",
+    "/feeds/posts/default?alt=atom",
+    "/feeds/posts/default?alt=rss",
+]
+_EXT_PROBES = [".xml", ".rss"]
 
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1))
@@ -48,51 +55,52 @@ def _stage_anchor_heuristics(html: str, base: str) -> List[str]:
     return feeds
 
 
+def _parse_feed(url: str) -> List[dict]:
+    try:
+        resp = requests.get(url, timeout=10)
+        resp.raise_for_status()
+    except Exception as exc:  # pragma: no cover - network failures
+        log.warning("feed request failed for %s: %s", url, exc)
+        return []
+    parsed = feedparser.parse(resp.text)
+    return list(parsed.entries)
+
+
+def _probe_extensions(url: str) -> List[str]:
+    parsed = urlparse(url)
+    root = f"{parsed.scheme}://{parsed.netloc}"
+    return [root + ext for ext in _EXT_PROBES]
+
+
 def probe_default_endpoints(url: str) -> List[str]:
     parsed = urlparse(url)
     root = f"{parsed.scheme}://{parsed.netloc}"
-    feeds: List[str] = []
-    for ep in _DEFAULT_ENDPOINTS:
-        candidate = urljoin(root, ep)
-        try:
-            r = requests.head(candidate, allow_redirects=True, timeout=5)
-            content_type = r.headers.get("content-type", "").lower()
-            if r.status_code < 400 and "xml" in content_type:
-                feeds.append(candidate)
-                continue
-            r = requests.get(candidate, allow_redirects=True, timeout=5)
-            content_type = r.headers.get("content-type", "").lower()
-            if r.status_code < 400 and "xml" in content_type:
-                feeds.append(candidate)
-        except Exception:  # pragma: no cover - network failures
-            continue
-    return feeds
+    return [urljoin(root, ep) for ep in _DEFAULT_ENDPOINTS]
 
 
 def discover_feeds(url: str) -> List[str]:
-    """Return a list of feed URLs discovered on ``url``."""
+    """Return a list of valid feed URLs discovered on ``url``."""
     html = fetch_html(url)
-    feeds: set[str] = set()
 
-    stage1 = _stage_link_rel(html, url)
-    feeds.update(stage1)
-    print("[1] link-rel feeds:", stage1)
+    approaches = [
+        ("link-rel", lambda: _stage_link_rel(html, url)),
+        ("defaults", lambda: probe_default_endpoints(url)),
+        ("anchors", lambda: _stage_anchor_heuristics(html, url)),
+        ("feedfinder2", lambda: feedfinder2.find_feeds(url)),
+        ("extensions", lambda: _probe_extensions(url)),
+    ]
 
-    stage2 = _stage_anchor_heuristics(html, url)
-    feeds.update(stage2)
-    print("[2] anchor heuristics:", stage2)
+    for name, func in approaches:
+        candidates = func()
+        valid: List[str] = []
+        for c in candidates:
+            if _parse_feed(c):
+                valid.append(c)
+        if valid:
+            log.info("%s succeeded with %s", name, valid)
+            return valid
 
-    stage3 = feedfinder2.find_feeds(html)
-    feeds.update(stage3)
-    print("[3] feedfinder2:", stage3)
-
-    stage4 = probe_default_endpoints(url)
-    feeds.update(stage4)
-    print("[4] default endpoints:", stage4)
-
-    print("[5] first 200 chars of HTML:", repr(html[:200]))
-
-    return sorted(feeds)
+    return []
 
 
 def run() -> None:  # pragma: no cover - manual invocation only
