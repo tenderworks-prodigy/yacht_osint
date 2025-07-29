@@ -8,6 +8,8 @@ import feedfinder2
 import feedparser
 from bs4 import BeautifulSoup
 
+from typing import list
+
 # silence feedfinder2 warnings by forcing the lxml parser
 feedfinder2.BeautifulSoup = lambda markup, *a, **k: BeautifulSoup(markup, "lxml", *a, **k)
 
