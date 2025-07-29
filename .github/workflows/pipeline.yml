@@ -32,7 +32,7 @@ jobs:
         
       - name: Install dev tools
         run: |
-          pip install ruff black
+          pip install 'ruff>=0.13.0' black
 
       - name: Run lint & format
         run: |
