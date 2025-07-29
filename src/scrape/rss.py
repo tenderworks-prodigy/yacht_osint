@@ -8,15 +8,13 @@ import feedfinder2
 import feedparser
 from bs4 import BeautifulSoup
 
-from typing import list
-
 # silence feedfinder2 warnings by forcing the lxml parser
 feedfinder2.BeautifulSoup = lambda markup, *a, **k: BeautifulSoup(markup, "lxml", *a, **k)
 
 log = logging.getLogger(__name__)
 
 
-def discover_feeds(domains: list[str]) -> dict[str, List[str]]:
+def discover_feeds(domains: list[str]) -> dict[str, list[str]]:
     feeds: dict[str, list[str]] = {}
     for domain in domains:
         url = f"https://{domain}"
@@ -42,7 +40,7 @@ def fetch_entries(feed_map: dict[str, list[str]], limit: int = 20) -> dict[str, 
     return results
 
 
-def run(domains: list[str]) -> dict[str, List[dict]]:
+def run(domains: list[str]) -> dict[str, list[dict]]:
     feeds = discover_feeds(domains)
     return fetch_entries(feeds)
 
