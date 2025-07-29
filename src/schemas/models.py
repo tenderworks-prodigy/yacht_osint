@@ -1,4 +1,3 @@
-from typing import List
 from pydantic import BaseModel, Field
 
 
@@ -31,8 +30,8 @@ class Source(BaseModel):
 
 
 class ExtractionBundle(BaseModel):
-    yachts: List[Yacht] = Field(default_factory=list)
-    tenders: List[Tender] = Field(default_factory=list)
-    aliases: List[YachtAlias] = Field(default_factory=list)
-    events: List[YachtEvent] = Field(default_factory=list)
-    sources: List[Source] = Field(default_factory=list)
+    yachts: list[Yacht] = Field(default_factory=list)
+    tenders: list[Tender] = Field(default_factory=list)
+    aliases: list[YachtAlias] = Field(default_factory=list)
+    events: list[YachtEvent] = Field(default_factory=list)
+    sources: list[Source] = Field(default_factory=list)
