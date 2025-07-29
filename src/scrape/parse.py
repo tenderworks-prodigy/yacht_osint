@@ -29,7 +29,7 @@ _EXT_PROBES = [".xml", ".rss"]
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1))
 def fetch_html(url: str) -> str:
     resp = requests.get(url, timeout=10)
-        log.info("fetch %s -> %s %s", url, resp.status_code, resp.headers.get("content-type", ""))
+    log.info("fetch %s -> %s %s", url, resp.status_code, resp.headers.get("content-type", ""))
     resp.raise_for_status()
     return resp.text
 
