@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+import json
+import logging
+import random
+import time
+
 """
 RSS feed discovery and parsing helpers.
 
@@ -12,10 +17,6 @@ fallback discovery logic below also includes additional heuristics and
 diagnostics to improve the feed discovery rate and assist with debugging.
 """
 
-import json
-import logging
-import random
-import time
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Iterable, List, Optional
