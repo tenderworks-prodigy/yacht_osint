@@ -4,6 +4,9 @@ on:
     types: [opened, reopened, synchronize]
   workflow_dispatch:
 
+permissions:
+  contents: write
+  
 jobs:
   format:
     runs-on: ubuntu-latest
