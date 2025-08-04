@@ -31,6 +31,10 @@ def run(db_path: Path = Path("yachts.duckdb")) -> Path:
         if json_path.exists():
             try:
                 records = json.loads(json_path.read_text())
+                if isinstance(records, dict):
+                    records = [records]
+                elif not isinstance(records, list):
+                    raise TypeError("export JSON must be list or dict")
                 df = pd.DataFrame(records)[["name", "length_m"]]
             except Exception as exc:
                 log.warning("failed to load %s: %s", json_path, exc)

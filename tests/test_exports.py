@@ -34,8 +34,19 @@ def test_export_empty_db(tmp_path, monkeypatch):
 def test_run_exports_json(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     (tmp_path / "exports").mkdir()
-    (tmp_path / "exports" / "new_data.json").write_text('[{"name": "B", "length_m": 2}]')
+    (tmp_path / "exports" / "new_data.json").write_text('{"name": "B", "length_m": 2}')
     out = export_csv.run(tmp_path / "missing.duckdb")
     df = pd.read_csv(out)
     assert Path("exports/yachts.csv").is_file()
     assert df.iloc[0]["name"] == "B"
+
+
+def test_run_exports_empty_json(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "exports").mkdir()
+    (tmp_path / "exports" / "new_data.json").write_text("[]")
+    out = export_csv.run(tmp_path / "missing.duckdb")
+    df = pd.read_csv(out)
+    assert Path("exports/yachts.csv").is_file()
+    assert list(df.columns) == ["name", "length_m"]
+    assert len(df) == 0
