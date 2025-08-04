@@ -6,13 +6,15 @@ on:
 
 permissions:
   contents: write
-  
+
 jobs:
   format:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
           persist-credentials: true
 
       - name: Set up Python
@@ -21,15 +23,17 @@ jobs:
           python-version: '3.11'
 
       - name: Install formatters
-        run: pip install ruff==0.12.5 black
+        run: |
+          pip install ruff==0.12.5 black
 
       - name: Apply Ruff fixes
         run: |
-          ruff check . --fix
-          ruff check .
+          ruff --fix .
+          ruff .
 
       - name: Apply Black formatting
-        run: black .
+        run: |
+          black .
 
       - name: Commit & push changes
         run: |
