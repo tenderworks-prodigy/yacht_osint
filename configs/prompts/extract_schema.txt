@@ -1,2 +1,0 @@
-System prompt + strict JSONSchema for Pydantic models.
-Return **only** valid JSON.

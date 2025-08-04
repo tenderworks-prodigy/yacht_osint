@@ -1,2 +1,0 @@
-[console_scripts]
-yacht-osint = src.cli:run
