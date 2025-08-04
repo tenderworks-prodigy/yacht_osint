@@ -7,6 +7,7 @@ from pathlib import Path
 import feedfinder2
 import feedparser
 from bs4 import BeautifulSoup
+from urllib.parse import urlparse
 
 # silence feedfinder2 warnings by forcing the lxml parser
 feedfinder2.BeautifulSoup = lambda markup, *a, **k: BeautifulSoup(markup, "lxml", *a, **k)
@@ -14,18 +15,36 @@ feedfinder2.BeautifulSoup = lambda markup, *a, **k: BeautifulSoup(markup, "lxml"
 log = logging.getLogger(__name__)
 
 
+def _normalize_domain(entry: str | dict) -> str | None:
+    """Extract and validate domain string from input that may be a dict or string."""
+    domain = None
+    if isinstance(entry, dict):
+        domain = entry.get("domain")
+    elif isinstance(entry, str):
+        domain = entry
+    if not domain:
+        return None
+    parsed = urlparse(f"https://{domain}" if "://" not in domain else domain)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        log.warning("skipping invalid domain during RSS discovery: %s", entry)
+        return None
+    # strip scheme if present, keep just host
+    return parsed.netloc
+
 def discover_feeds(domains: list[str]) -> dict[str, list[str]]:
     feeds: dict[str, list[str]] = {}
-    for domain in domains:
-        url = f"https://{domain}"
+    for entry in domains:
+        normalized = _normalize_domain(entry)
+        if not normalized:
+            continue
+        base_url = f"https://{normalized}"
         try:
-            found = feedfinder2.find_feeds(url)
+            found = feedfinder2.find_feeds(base_url)
             if found:
-                feeds[domain] = found
+                feeds[normalized] = found
         except Exception as exc:  # pragma: no cover - logging
-            log.warning("feed discovery failed for %s: %s", domain, exc)
+            log.warning("feed discovery failed for %s: %s", normalized, exc)
     return feeds
-
 
 def fetch_entries(feed_map: dict[str, list[str]], limit: int = 20) -> dict[str, list[dict]]:
     results: dict[str, list[dict]] = {}
