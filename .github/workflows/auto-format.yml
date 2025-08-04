@@ -3,7 +3,8 @@ name: "Auto-format Python code"
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-
+  workflow_dispatch: 
+  
 jobs:
   format:
     runs-on: ubuntu-latest
