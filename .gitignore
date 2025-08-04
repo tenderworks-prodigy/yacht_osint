@@ -10,3 +10,8 @@ data/cache/
 !exports/yachts.csv
 .venv/
 .venv/
+
+# diagnostic and build artefacts are generated during development and must not be committed
+diagnostics/
+artifacts/
+*.log
