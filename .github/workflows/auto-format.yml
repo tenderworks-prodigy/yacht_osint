@@ -22,14 +22,14 @@ jobs:
 
       - name: Install formatters
         run: |
-          pip install ruff==0.12.5 black
+          pip install ruff black
 
-      - name: Apply Ruff formatting
+      - name: Apply Ruff auto-fixes
         run: |
-          # Apply all auto-fixable lint rules
-          ruff format .
-          # Then verify no lint errors remain
-          ruff check .
+          # fix what can be fixed
+          ruff --fix .
+          # then verify no errors remain
+          ruff .
 
       - name: Apply Black formatting
         run: black .
