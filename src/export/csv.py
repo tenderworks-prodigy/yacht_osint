@@ -35,7 +35,17 @@ def run(db_path: Path = Path("yachts.duckdb")) -> Path:
                     records = [records]
                 elif not isinstance(records, list):
                     raise TypeError("export JSON must be list or dict")
-                df = pd.DataFrame(records)[["name", "length_m"]]
+                df = pd.DataFrame(records)
+                # defensive: ensure expected columns
+                if not all(col in df.columns for col in ["name", "length_m"]):
+                    missing = [c for c in ["name", "length_m"] if c not in df.columns]
+                    log.warning(
+                        "new_data JSON missing expected columns %s; producing empty dataframe",
+                        missing,
+                    )
+                    df = pd.DataFrame(columns=["name", "length_m"])
+                else:
+                    df = df[["name", "length_m"]]
             except Exception as exc:
                 log.warning("failed to load %s: %s", json_path, exc)
 
