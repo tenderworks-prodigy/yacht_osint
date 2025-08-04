@@ -1,18 +1,19 @@
+# ruff: noqa: I001
+from pathlib import Path
 import json
 import logging
-from pathlib import Path
-
 import duckdb
 import pandas as pd
+from src.sensors import sensor
 
-REPO_ROOT = Path(__file__).parent.parent.parent
-EXPORT_DIR = REPO_ROOT / "exports"
+EXPORT_DIR = Path("exports")
 
 log = logging.getLogger(__name__)
 
 
+@sensor("export")
 def run(db_path: Path = Path("yachts.duckdb")) -> Path:
-    EXPORT_DIR.mkdir(exist_ok=True, parents=True)
+    EXPORT_DIR.mkdir(parents=True, exist_ok=True)
 
     # Try the DuckDB first:
     if db_path.exists():
@@ -34,17 +35,21 @@ def run(db_path: Path = Path("yachts.duckdb")) -> Path:
             except Exception as exc:
                 log.warning("failed to load %s: %s", json_path, exc)
 
-    # Always produce a CSV (empty or not):
     out = EXPORT_DIR / "yachts.csv"
+    log.debug("cwd=%s, EXPORT_DIR=%s, writing to %s", Path.cwd(), EXPORT_DIR, out)
+
     if df.empty:
         df = pd.DataFrame(columns=["name", "length_m"])
     with out.open("w", newline="") as f:
         df.to_csv(f, index=False)
 
-    log.info("saved %d rows → %s", len(df), out)
+    if not out.exists():
+        log.error("expected export missing: %s", out)
+
+    log.info("saved %d rows -> %s", len(df), out)
     return out
 
 
 if __name__ == "__main__":
-    # Run unconditionally when invoked as a script:
-    run()
+    p = run()
+    print("Export wrote:", p, "Exists?", p.exists())
