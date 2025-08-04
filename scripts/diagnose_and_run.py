@@ -119,7 +119,11 @@ def diagnose(url: str) -> dict:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Diagnose feed discovery for a domain or URL")
     parser.add_argument("url", help="Domain or full URL to probe")
-    parser.add_argument("--json", action="store_true", help="Output full JSON instead of pretty printing")
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Output full JSON instead of pretty printing"
+    )
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     result = diagnose(args.url)
