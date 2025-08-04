@@ -73,6 +73,7 @@ jobs:
           python -m src.extract.run_all
 
       - name: Run OSINT pipeline
+        working-directory: ${{ github.workspace }}
         run: |
           set -o errexit -o nounset -o pipefail
           rm -rf exports/* exports/.* 2>/dev/null || true
@@ -81,18 +82,21 @@ jobs:
           python -m src.cli
           python -m src.persist.duckdb_io
           python -m src.persist.new_data
-          python -m src.persist.exports
 
-      - name: "Debug: show exports directory contents"
+      - name: Export CSV
+        working-directory: ${{ github.workspace }}
         run: |
-          set -o pipefail
-          echo "📂 Project root contents:"
-          ls -la
-          echo
-          echo "🔍 Recursive exports folder:"
-          ls -R exports/
+          python -m src.export.csv
+          echo "Exit=$?"
+          find . -maxdepth 2 -type f
+          find . -name yachts.csv
+
+      - name: Debug workspace
+        working-directory: ${{ github.workspace }}
+        run: echo "PWD=$(pwd)" && find . -maxdepth 3 -type f
 
       - name: Smoke test exports
+        working-directory: ${{ github.workspace }}
         run: |
           python - <<'EOF'
           import pandas as pd, sys
