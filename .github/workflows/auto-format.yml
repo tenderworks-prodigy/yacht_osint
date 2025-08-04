@@ -14,6 +14,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          fetch-depth: 0                # need full history for push
+          ref: ${{ github.event.pull_request.head.ref }}
           persist-credentials: true
 
       - name: Set up Python
@@ -37,6 +39,10 @@ jobs:
       - name: Apply Black formatting
         run: |
           black .
+
+      - name: Ensure branch checked out
+        run: |
+          git switch "${{ github.event.pull_request.head.ref }}"
 
       - name: Commit & push formatting changes
         run: |
