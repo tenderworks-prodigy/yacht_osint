@@ -16,6 +16,7 @@ duckdb==1.1.2
 feedfinder2==0.0.4
 feedparser==6.0.11
 filelock==3.18.0
+git-filter-repo==2.47.0
 google-api-core==2.25.1
 google-api-python-client==2.177.0
 google-auth==2.40.3
