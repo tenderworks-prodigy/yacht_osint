@@ -46,9 +46,16 @@ def _search_google(query: str, num: int = 10) -> list[str]:
             raise
 
         if resp.status_code == 429:
+            # rate limit: increment circuit breaker and apply exponential backoff with jitter
             _consecutive_429s += 1
             wait = BACKOFF_BASE * 2**attempt + random.uniform(0, 1)
-            log.warning("rate limit hit, retrying in %.1fs", wait)
+            log.warning(
+                "rate limit hit on Google CSE (endpoint=%s) status=429, retrying in %.1fs; attempt=%s/%s",
+                CSE_URL,
+                wait,
+                attempt + 1,
+                MAX_RETRIES,
+            )
             time.sleep(wait)
             continue
 
