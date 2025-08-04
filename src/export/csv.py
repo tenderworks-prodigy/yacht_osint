@@ -1,3 +1,6 @@
+REPO_ROOT = Path(__file__).parent.parent.parent
+EXPORT_DIR = REPO_ROOT / "exports"
+
 import json
 import logging
 from pathlib import Path
@@ -11,8 +14,6 @@ EXPORT_DIR = Path("exports")
 
 log = logging.getLogger(__name__)
 
-
-@sensor("export")
 def run(db_path: Path = Path("yachts.duckdb")) -> Path:
     EXPORT_DIR.mkdir(exist_ok=True)
     df = pd.DataFrame()
