@@ -1,6 +1,6 @@
-from __future__ import annotations
-
 """Tests for the JSON schema validation added to src.persist.new_data."""
+
+from __future__ import annotations
 
 import pytest
 
