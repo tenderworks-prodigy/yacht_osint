@@ -1,6 +1,6 @@
 import logging
-import time
 import random
+import time
 
 from waybackpy import WaybackMachineCDXServerAPI
 

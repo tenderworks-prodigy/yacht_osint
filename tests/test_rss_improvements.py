@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import pytest
-
 from src.scrape import rss
+
 
 def test_discover_feeds_with_dicts(monkeypatch):
     # feedfinder2 should be invoked with the normalized host

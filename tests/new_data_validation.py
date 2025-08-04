@@ -6,6 +6,7 @@ import pytest
 
 from src.persist import new_data as nd
 
+
 def test_new_data_valid_list():
     # proper list of yachts with required fields
     data = [{"name": "Yacht A", "length_m": 50.0}, {"name": "Yacht B", "length_m": 70.5}]

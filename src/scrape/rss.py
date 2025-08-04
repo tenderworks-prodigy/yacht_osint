@@ -3,11 +3,11 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
+from urllib.parse import urlparse
 
 import feedfinder2
 import feedparser
 from bs4 import BeautifulSoup
-from urllib.parse import urlparse
 
 # silence feedfinder2 warnings by forcing the lxml parser
 feedfinder2.BeautifulSoup = lambda markup, *a, **k: BeautifulSoup(markup, "lxml", *a, **k)
