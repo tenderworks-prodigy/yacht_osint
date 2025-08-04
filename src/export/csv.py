@@ -1,11 +1,11 @@
-from pathlib import Path
 import json
 import logging
+from pathlib import Path
 
 import duckdb
 import pandas as pd
 
-REPO_ROOT  = Path(__file__).parent.parent.parent
+REPO_ROOT = Path(__file__).parent.parent.parent
 EXPORT_DIR = REPO_ROOT / "exports"
 
 log = logging.getLogger(__name__)
