@@ -2,7 +2,7 @@ name: auto-format
 on:
   pull_request:
     types: [opened, reopened, synchronize]
-  workflow_dispatch:    # ← allows manual “Run workflow” from the Actions tab
+  workflow_dispatch:
 
 jobs:
   format:
@@ -10,7 +10,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          persist-credentials: true     # so we can push back to the PR branch
+          persist-credentials: true
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -22,8 +22,8 @@ jobs:
 
       - name: Apply Ruff fixes
         run: |
-          ruff --fix .
-          ruff .          # re-run to ensure no errors remain
+          ruff fix .
+          ruff check .
 
       - name: Apply Black formatting
         run: black .
