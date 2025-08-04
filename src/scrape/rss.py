@@ -31,6 +31,7 @@ def _normalize_domain(entry: str | dict) -> str | None:
     # strip scheme if present, keep just host
     return parsed.netloc
 
+
 def discover_feeds(domains: list[str]) -> dict[str, list[str]]:
     feeds: dict[str, list[str]] = {}
     for entry in domains:
@@ -45,6 +46,7 @@ def discover_feeds(domains: list[str]) -> dict[str, list[str]]:
         except Exception as exc:  # pragma: no cover - logging
             log.warning("feed discovery failed for %s: %s", normalized, exc)
     return feeds
+
 
 def fetch_entries(feed_map: dict[str, list[str]], limit: int = 20) -> dict[str, list[dict]]:
     results: dict[str, list[dict]] = {}

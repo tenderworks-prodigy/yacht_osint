@@ -12,6 +12,7 @@ def test_discover_feeds_with_dicts(monkeypatch):
     assert "example.com" in feeds
     assert feeds["example.com"] == ["https://example.com/feed"]
 
+
 def test_discover_feeds_skips_invalid(monkeypatch):
     monkeypatch.setattr("feedfinder2.find_feeds", lambda url: [f"{url}/feed"])
     # garbage or missing domain entries should be ignored

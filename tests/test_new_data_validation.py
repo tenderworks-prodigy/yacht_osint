@@ -13,11 +13,13 @@ def test_new_data_valid_list():
     result = nd.run(data, verbose=True)
     assert isinstance(result, list) or isinstance(result, dict)
 
+
 def test_new_data_invalid_list():
     # missing required length_m should fail
     data = [{"name": "Yacht A"}]
     with pytest.raises(ValueError):
         nd.run(data)
+
 
 def test_new_data_object_heartbeat():
     # single object without name/length_m allowed (heartbeat style)
