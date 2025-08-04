@@ -8,3 +8,4 @@ data/cache/
 *.db
 *.csv
 !exports/yachts.csv
+.venv/
