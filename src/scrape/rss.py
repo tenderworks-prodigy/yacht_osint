@@ -1,10 +1,3 @@
-from __future__ import annotations
-
-import json
-import logging
-import random
-import time
-
 """
 RSS feed discovery and parsing helpers.
 
@@ -17,9 +10,15 @@ fallback discovery logic below also includes additional heuristics and
 diagnostics to improve the feed discovery rate and assist with debugging.
 """
 
+from __future__ import annotations
+
+import json
+import logging
+import random
+import time
+from collections.abc import Iterable
 from html.parser import HTMLParser
 from pathlib import Path
-from typing import Iterable, List, Optional
 from urllib.parse import urljoin, urlparse
 
 # Attempt to import optional dependencies. These are wrapped in a try/except so
@@ -31,6 +30,7 @@ try:
     import feedfinder2  # type: ignore
     from bs4 import BeautifulSoup  # type: ignore
 except Exception:
+
     class _FeedFinder2Stub:  # type: ignore
         """Fallback stub for feedfinder2 when the library is not available."""
 
@@ -52,6 +52,7 @@ except Exception:
 try:
     import feedparser  # type: ignore
 except Exception:
+
     class _FeedParserStub:  # type: ignore
         """Fallback stub for feedparser when the library is not available."""
 
@@ -75,8 +76,7 @@ log = logging.getLogger(__name__)
 
 DEFAULT_HEADERS = {
     "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:117.0) "
-        "Gecko/20100101 Firefox/117.0"
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:117.0) " "Gecko/20100101 Firefox/117.0"
     ),
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "en-US,en;q=0.5",
@@ -93,9 +93,9 @@ FALLBACK_PATHS: tuple[str, ...] = (
 RAW_DIR = Path("diagnostics/raw")
 
 
-def _normalize_domain(entry: str | dict) -> Optional[str]:
+def _normalize_domain(entry: str | dict) -> str | None:
     """Extract and validate a domain string from an input entry."""
-    domain: Optional[str] = None
+    domain: str | None = None
     if isinstance(entry, dict):
         domain = entry.get("domain")
     elif isinstance(entry, str):
@@ -109,10 +109,11 @@ def _normalize_domain(entry: str | dict) -> Optional[str]:
     return parsed.netloc
 
 
-def _get_html(url: str) -> tuple[Optional[bytes], int, str]:
+def _get_html(url: str) -> tuple[bytes | None, int, str]:
     """Fetch a URL and return the raw body, status and content type."""
     try:
         import requests  # type: ignore
+
         try:
             resp = requests.get(url, headers=DEFAULT_HEADERS, timeout=10)
             return resp.content, resp.status_code, resp.headers.get("Content-Type", "")
@@ -121,6 +122,7 @@ def _get_html(url: str) -> tuple[Optional[bytes], int, str]:
             return None, 0, ""
     except Exception:
         from urllib.request import Request, urlopen
+
         try:
             req = Request(url, headers=DEFAULT_HEADERS)
             with urlopen(req, timeout=10) as resp:  # type: ignore[attr-defined]
@@ -146,75 +148,7 @@ class _FeedHTMLParser(HTMLParser):
         if tag.lower() == "a":
             self.a_count += 1
         elif tag.lower() == "link":
-            attr_dict = {k.lower(): (v or "") for k, v in attrs}
-            rel = attr_dict.get("rel", "").lower()
-            type_attr = attr_dict.get("type", "").lower()
-            if "alternate" in rel and ("rss" in type_attr or "atom" in type_attr):
-                href = attr_dict.get("href")
-                if href:
-                    self.feed_links.append(urljoin(self.base_url, href))
-
-
-def _parse_homepage_for_feeds(base_url: str) -> tuple[list[str], int, bytes, int, str]:
-    html, status, content_type = _get_html(base_url)
-    if not html:
-        return [], 0, b"", status, content_type
-    parser = _FeedHTMLParser(base_url)
-    try:
-        parser.feed(html.decode(errors="ignore"))
-    except Exception:
-        pass
-    return parser.feed_links, parser.a_count, html, status, content_type
-
-
-def _fallback_feed_endpoints(base_url: str) -> list[str]:
-    feeds: list[str] = []
-    for i, path in enumerate(FALLBACK_PATHS):
-        url = base_url.rstrip("/") + "/" + path
-        html, status, content_type = _get_html(url)
-        log.info(
-            "fallback attempt %s/%s: %s status=%s content_type=%s",
-            i + 1,
-            len(FALLBACK_PATHS),
-            url,
-            status,
-            content_type,
-        )
-        if html and 200 <= status < 300 and "xml" in (content_type or "").lower():
-            feeds.append(url)
-            break
-        time.sleep(0.5 + random.random() * 0.2)
-    return feeds
-
-
-def _save_raw_html(domain: str, html: bytes) -> None:
-    try:
-        RAW_DIR.mkdir(parents=True, exist_ok=True)
-        path = RAW_DIR / f"{domain}.html"
-        with path.open("wb") as f:
-            f.write(html)
-    except Exception:
-        log.warning("failed to save raw HTML for %s", domain)
-
-
-def discover_feeds(domains: Iterable[str]) -> dict[str, list[str]]:
-    feeds: dict[str, list[str]] = {}
-    for entry in domains:
-        normalized = _normalize_domain(entry)
-        if not normalized:
-            continue
-        base_url = f"https://{normalized}"
-        found: list[str] = []
-        try:
-            found = feedfinder2.find_feeds(base_url) or []  # type: ignore
-        except Exception as exc:
-            log.warning("feedfinder2 discovery failed for %s: %s", normalized, exc)
-            found = []
-        if not found:
-            feed_links, a_count, html, status, content_type = _parse_homepage_for_feeds(base_url)
-            log.info(
-                json.dumps(
-                    {
+@@ -218,45 +220,48 @@ def discover_feeds(domains: Iterable[str]) -> dict[str, list[str]]:
                         "domain": normalized,
                         "status": status,
                         "content_type": content_type,
@@ -240,20 +174,23 @@ def fetch_entries(feed_map: dict[str, list[str]], limit: int = 20) -> dict[str, 
         for url in urls:
             try:
                 d = feedparser.parse(url)  # type: ignore[attr-defined]
-                entries = getattr(d, "entries", []) or (d.get("entries") if isinstance(d, dict) else [])
+                entries = getattr(d, "entries", []) or (
+                    d.get("entries") if isinstance(d, dict) else []
+                )
                 results[domain].extend(entries[:limit])
             except Exception as exc:
                 log.warning("parse failed for %s: %s", url, exc)
     return results
 
 
-def run(domains: List[str]) -> dict[str, list[dict]]:
+def run(domains: list[str]) -> dict[str, list[dict]]:
     feeds = discover_feeds(domains)
     return fetch_entries(feeds)
 
 
 if __name__ == "__main__":
     import sys
+
     domains: list[str] = list(sys.argv[1:])
     data = run(domains)
     out = Path("yacht_osint/data/cache/discovered_feeds.json")
