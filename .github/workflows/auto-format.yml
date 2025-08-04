@@ -41,16 +41,38 @@ jobs:
           black .
 
       - name: Ensure branch checked out
+        # On pull_request events the checkout action will leave us in a detached
+        # HEAD state. Determine the target branch of the PR and explicitly
+        # switch to it before committing changes. Both ``GITHUB_HEAD_REF`` and
+        # the pull_request payload expose the head reference.
         run: |
-          git switch "${{ github.event.pull_request.head.ref }}"
+          set -e
+          BRANCH="${{ github.event.pull_request.head.ref }}"
+          if [ -z "$BRANCH" ]; then
+            BRANCH="${{ github.head_ref }}"
+          fi
+          if [ -z "$BRANCH" ]; then
+            BRANCH="${GITHUB_REF#refs/heads/}"
+          fi
+          echo "Checking out PR branch $BRANCH"
+          git switch "$BRANCH"
 
       - name: Commit & push formatting changes
         run: |
+          set -e
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add .
-          # only commit if there are formatting changes
           if ! git diff --cached --quiet; then
             git commit -m "chore(auto-format): apply Ruff & Black fixes"
-            git push
+            # push back to the PR branch (avoid detached HEAD push)
+            BRANCH="${{ github.event.pull_request.head.ref }}"
+            if [ -z "$BRANCH" ]; then
+              BRANCH="${{ github.head_ref }}"
+            fi
+            if [ -z "$BRANCH" ]; then
+              BRANCH="${GITHUB_REF#refs/heads/}"
+            fi
+            echo "Pushing changes to $BRANCH"
+            git push origin HEAD:"$BRANCH"
           fi
