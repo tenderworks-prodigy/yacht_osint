@@ -22,7 +22,7 @@ jobs:
 
       - name: Apply Ruff fixes
         run: |
-          ruff fix .
+          ruff check . --fix
           ruff check .
 
       - name: Apply Black formatting
