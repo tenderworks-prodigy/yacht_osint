@@ -3,8 +3,19 @@ import logging
 from collections.abc import Iterable
 from pathlib import Path
 
-import requests
 from jsonschema import ValidationError, validate
+
+from src.common.http import get as http_get
+
+
+class _RequestsShim:
+    """Shim so tests can patch requests.get."""
+
+    def get(self, url, *args, **kwargs):
+        return http_get(url, *args, **kwargs)
+
+
+requests = _RequestsShim()
 
 log = logging.getLogger(__name__)
 
