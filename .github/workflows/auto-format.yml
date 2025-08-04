@@ -11,10 +11,8 @@ jobs:
   format:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
           persist-credentials: true
 
       - name: Set up Python
@@ -26,14 +24,15 @@ jobs:
         run: |
           pip install ruff==0.12.5 black
 
-      - name: Apply Ruff fixes
+      - name: Apply Ruff formatting
         run: |
-          ruff --fix .
-          ruff .
+          # Apply all auto-fixable lint rules
+          ruff format .
+          # Then verify no lint errors remain
+          ruff check .
 
       - name: Apply Black formatting
-        run: |
-          black .
+        run: black .
 
       - name: Commit & push changes
         run: |
