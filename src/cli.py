@@ -19,6 +19,11 @@ def run() -> None:
     if settings.search.domain_blacklist:
         domains = [d for d in domains if d not in settings.search.domain_blacklist]
     feeds = rss_mod.run(domains)
+    # Guardrail: if no feeds were discovered, exit with a non‑zero status. A
+    # successful pipeline run is expected to return at least one feed.
+    if not feeds:
+        log.error("no feeds discovered from %d domain(s), aborting", len(domains))
+        raise SystemExit(1)
     out = Path("yacht_osint/data/cache/discovered_feeds.json")
     out.parent.mkdir(parents=True, exist_ok=True)
     json.dump(feeds, out.open("w"))
