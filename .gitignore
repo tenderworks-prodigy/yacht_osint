@@ -7,3 +7,4 @@ data/duckdb/
 data/cache/
 *.db
 *.csv
+!exports/yachts.csv
