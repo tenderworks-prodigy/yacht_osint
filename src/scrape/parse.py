@@ -5,15 +5,12 @@ from urllib.parse import urljoin, urlparse
 
 import feedfinder2
 import feedparser
-import requests
 import vcr
 from bs4 import BeautifulSoup
 from tenacity import retry, stop_after_attempt, wait_exponential
 
+from src.common.http import get as http_get
 from src.sensors import sensor
-
-SESSION = requests.Session()
-SESSION.trust_env = False
 
 log = logging.getLogger(__name__)
 logging.getLogger("urllib3.connectionpool").setLevel(logging.WARNING)
@@ -31,7 +28,7 @@ _EXT_PROBES = [".xml", ".rss"]
 @sensor("scrape")
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1))
 def fetch_html(url: str) -> str:
-    resp = SESSION.get(url, timeout=10)
+    resp = http_get(url, timeout=10)
     ct = resp.headers.get("content-type", "")
     links = BeautifulSoup(resp.text, "lxml").find_all("link")
     log.debug(
@@ -78,7 +75,7 @@ def _stage_anchor_heuristics(html: str, base: str) -> list[str]:
 
 def _parse_feed(url: str) -> list[dict]:
     try:
-        resp = SESSION.get(url, timeout=10)
+        resp = http_get(url, timeout=10)
         resp.raise_for_status()
     except Exception as exc:  # pragma: no cover - network failures
         log.warning("feed request failed for %s: %s", url, exc)
@@ -98,7 +95,7 @@ def _probe_extensions(url: str) -> list[str]:
 
 def _validate_feed(url: str) -> bool:
     try:
-        resp = SESSION.get(url, timeout=8)
+        resp = http_get(url, timeout=8)
         return 200 <= resp.status_code < 400
     except Exception as e:  # pragma: no cover - network errors
         log.warning("feed validation failed: %s \u2013 keeping URL", e)
