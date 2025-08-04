@@ -50,7 +50,7 @@ def _search_google(query: str, num: int = 10) -> list[str]:
             _consecutive_429s += 1
             wait = BACKOFF_BASE * 2**attempt + random.uniform(0, 1)
             log.warning(
-                "rate limit hit on Google CSE status=429, retrying in %.1fs (attempt %s/%s) endpoint=%s",
+                "rate limit hit on CSE 429, retrying in %.1fs (%s/%s) endpoint=%s",
                 wait,
                 attempt + 1,
                 MAX_RETRIES,
