@@ -1,6 +1,6 @@
-from __future__ import annotations
-
 """Additional tests for improved RSS feed discovery and parsing logic."""
+
+from __future__ import annotations
 
 import pytest
 
