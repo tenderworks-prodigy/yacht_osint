@@ -20,7 +20,9 @@ from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
+from src.common.browser_fetch import fetch_with_browser
 from src.common.diagnostics import validate_io
+from src.common.throttle import sleep
 
 # ----------------------------------------------------------------------------
 # Optional third‑party dependencies
@@ -113,16 +115,24 @@ def _normalize_domain(entry: str | dict) -> str | None:
     return parsed.netloc
 
 
-def _get_html(url: str) -> tuple[bytes, int, str]:
+def _requests_fetch(url: str) -> tuple[bytes | None, int, str]:
+    import requests  # type: ignore
+
+    resp = requests.get(url, headers=DEFAULT_HEADERS, timeout=10)
+    return resp.content, resp.status_code, resp.headers.get("Content-Type", "")
+
+
+def _get_html(url: str) -> tuple[bytes | None, int, str]:
     """Return *(body, status_code, content_type)* for *url*.
 
     Any failure is logged and re-raised so calling code fails fast.
     """
     try:
-        import requests  # type: ignore
-
-        resp = requests.get(url, headers=DEFAULT_HEADERS, timeout=10)
-        return resp.content, resp.status_code, resp.headers.get("Content-Type", "")
+        sleep()
+        body, status, ctype = _requests_fetch(url)
+        if status in (403, 429) or b"cf-browser-verification" in (body or b""):
+            body, status, ctype = fetch_with_browser(url)
+        return body, status, ctype
     except Exception as exc:  # noqa: BLE001
         log.error("fatal in _get_html: %s", exc, exc_info=True)
         raise
