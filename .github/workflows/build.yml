@@ -7,6 +7,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     container:
       image: ghcr.io/${{ github.repository_owner }}/yacht-osint-ci:latest
     steps:
@@ -31,3 +33,15 @@ jobs:
         with:
           name: yacht-osint-exports
           path: exports/yachts.csv
+
+      - name: Create GitHub Issue on Failure
+        if: failure()
+        run: |
+          curl -X POST \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/issues \
+            -d $'{
+              "title": "CI failed",
+              "body": "The CI pipeline failed. See logs: '"${{ github.run_url }}"'"
+            }'
