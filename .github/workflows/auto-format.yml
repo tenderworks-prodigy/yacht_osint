@@ -1,4 +1,4 @@
-name: auto-format
+name: i_do_format
 
 on:
   pull_request:
