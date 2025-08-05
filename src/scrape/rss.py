@@ -195,7 +195,10 @@ def _fallback_feed_endpoints(base_url: str) -> list[str]:
         probe = urljoin(base_url, p)
         try:
             with urlopen(probe, timeout=5) as resp:  # type: ignore[attr-defined]
-                if resp.status < 400 and resp.headers.get("Content-Type", "").startswith("application"):
+                if (
+                    resp.status < 400
+                    and resp.headers.get("Content-Type", "").startswith("application")
+                ):
                     found.append(probe)
         except Exception:  # noqa: BLE001
             continue
