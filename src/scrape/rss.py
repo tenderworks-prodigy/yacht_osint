@@ -9,16 +9,18 @@ if those libraries are missing.  The goal is to keep the public interface
 stable even in constrained environments where external packages may not be
 installed.
 """
+
 from __future__ import annotations
 
 import json
 import logging
 import random
-import time
 from collections.abc import Iterable
 from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
+
+from src.common.diagnostics import validate_io
 
 # ----------------------------------------------------------------------------
 # Optional third‑party dependencies
@@ -70,8 +72,7 @@ log = logging.getLogger(__name__)
 # ----------------------------------------------------------------------------
 DEFAULT_HEADERS = {
     "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:117.0) "
-        "Gecko/20100101 Firefox/117.0"
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:117.0) " "Gecko/20100101 Firefox/117.0"
     ),
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "en-US,en;q=0.5",
@@ -91,6 +92,7 @@ RAW_DIR = Path("diagnostics/raw")
 # Helper functions
 # ----------------------------------------------------------------------------
 
+
 def _normalize_domain(entry: str | dict) -> str | None:
     """Extract a valid domain/netloc from *entry* or return *None*."""
     domain: str | None = None
@@ -109,31 +111,19 @@ def _normalize_domain(entry: str | dict) -> str | None:
     return parsed.netloc
 
 
-def _get_html(url: str) -> tuple[bytes | None, int, str]:
-    """Return *(body, status_code, content_type)* for *url* (or *(None, 0, "")*)."""
+def _get_html(url: str) -> tuple[bytes, int, str]:
+    """Return *(body, status_code, content_type)* for *url*.
+
+    Any failure is logged and re-raised so calling code fails fast.
+    """
     try:
         import requests  # type: ignore
 
-        try:
-            resp = requests.get(url, headers=DEFAULT_HEADERS, timeout=10)
-            return resp.content, resp.status_code, resp.headers.get("Content-Type", "")
-        except Exception as exc:  # noqa: BLE001
-            log.warning("request failed for %s: %s", url, exc)
-            return None, 0, ""
-    except Exception:
-        # Fall back to stdlib *urllib* to avoid hard dependency on *requests*.
-        from urllib.request import Request, urlopen
-
-        try:
-            req = Request(url, headers=DEFAULT_HEADERS)
-            with urlopen(req, timeout=10) as resp:  # type: ignore[attr-defined]
-                body: bytes = resp.read()
-                status: int = getattr(resp, "status", 0)
-                content_type: str = resp.headers.get("Content-Type", "")
-                return body, status, content_type
-        except Exception as exc:  # noqa: BLE001
-            log.warning("request failed for %s: %s", url, exc)
-            return None, 0, ""
+        resp = requests.get(url, headers=DEFAULT_HEADERS, timeout=10)
+        return resp.content, resp.status_code, resp.headers.get("Content-Type", "")
+    except Exception as exc:  # noqa: BLE001
+        log.error("fatal in _get_html: %s", exc, exc_info=True)
+        raise
 
 
 class _FeedHTMLParser(HTMLParser):
@@ -170,6 +160,7 @@ class _FeedHTMLParser(HTMLParser):
 # Feed discovery helpers
 # ----------------------------------------------------------------------------
 
+
 def _discover_with_bs(base_url: str, html: str) -> list[str]:
     """Discover feeds using BeautifulSoup if available."""
     try:
@@ -195,7 +186,8 @@ def _fallback_feed_endpoints(base_url: str) -> list[str]:
         probe = urljoin(base_url, p)
         try:
             with urlopen(probe, timeout=5) as resp:  # type: ignore[attr-defined]
-                if resp.status < 400 and resp.headers.get("Content-Type", "").startswith("application"):
+                content_type = resp.headers.get("Content-Type", "")
+                if resp.status < 400 and content_type.startswith("application"):
                     found.append(probe)
         except Exception:  # noqa: BLE001
             continue
@@ -211,6 +203,8 @@ def _save_raw_html(domain: str, body: bytes):
 # Public API
 # ----------------------------------------------------------------------------
 
+
+@validate_io
 def discover_feeds(domains: Iterable[str]) -> dict[str, list[str]]:
     """Return mapping **domain → [feed URLs]**."""
     feeds: dict[str, list[str]] = {}
@@ -220,7 +214,7 @@ def discover_feeds(domains: Iterable[str]) -> dict[str, list[str]]:
             continue
 
         base_url = f"https://{normalized}"
-        html_bytes, status, content_type = _get_html(base_url)
+        html_bytes, _, _ = _get_html(base_url)
         html = html_bytes.decode("utf-8", "ignore") if html_bytes else ""
 
         found: list[str] = []
@@ -252,6 +246,7 @@ def discover_feeds(domains: Iterable[str]) -> dict[str, list[str]]:
     return feeds
 
 
+@validate_io
 def fetch_entries(feed_map: dict[str, list[str]], limit: int = 20) -> dict[str, list[dict]]:
     """Read up to *limit* entries per *feed_map* URL using *feedparser*."""
     results: dict[str, list[dict]] = {}
@@ -274,9 +269,15 @@ def fetch_entries(feed_map: dict[str, list[str]], limit: int = 20) -> dict[str, 
     return results
 
 
+@validate_io
 def run(domains: list[str]) -> dict[str, list[dict]]:
     feeds = discover_feeds(domains)
-    return fetch_entries(feeds)
+    if not feeds:
+        raise ValueError("no feeds discovered")
+    entries = fetch_entries(feeds)
+    if any(len(v) == 0 for v in entries.values()):
+        raise ValueError("no entries fetched for some domains")
+    return entries
 
 
 if __name__ == "__main__":  # pragma: no cover – manual debug entry point

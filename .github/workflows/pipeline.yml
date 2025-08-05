@@ -108,6 +108,10 @@ jobs:
               sys.exit("Missing columns")
           EOF
 
+      - name: Pytest smoke pipeline
+        working-directory: ${{ github.workspace }}
+        run: pytest -q tests/smoke_pipeline.py
+
       - name: Generate DQ report
         run: python -m src.reporting.dq_report
 
