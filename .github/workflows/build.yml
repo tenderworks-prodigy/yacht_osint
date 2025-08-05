@@ -4,6 +4,11 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:       # ← enables “Run workflow” button in GitHub UI
+    inputs:
+      environment:
+        description: 'Deploy environment'
+        required: false
+        default: 'staging'
 
 jobs:
   build:
