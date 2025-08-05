@@ -63,7 +63,9 @@ except Exception:
 
 # Ensure *feedfinder2* uses the same soup implementation to avoid warnings.
 if hasattr(feedfinder2, "BeautifulSoup"):
-    feedfinder2.BeautifulSoup = lambda markup, *a, **k: BeautifulSoup(markup, "lxml", *a, **k)  # type: ignore
+    feedfinder2.BeautifulSoup = lambda markup, *a, **k: BeautifulSoup(
+        markup, "lxml", *a, **k
+    )  # type: ignore
 
 log = logging.getLogger(__name__)
 
@@ -135,7 +137,11 @@ class _FeedHTMLParser(HTMLParser):
         self.feed_links: list[str] = []
         self.a_count = 0
 
-    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]):  # type: ignore[override]
+    def handle_starttag(
+        self,
+        tag: str,
+        attrs: list[tuple[str, str | None]]
+    ):  # type: ignore[override]
         tag = tag.lower()
         if tag == "a":
             self.a_count += 1
