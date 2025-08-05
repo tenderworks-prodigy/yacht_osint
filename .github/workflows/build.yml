@@ -3,7 +3,8 @@ on:
   push:
     branches: [main]
   pull_request:
-  
+    branches: [main]
+    
   workflow_dispatch:       # ← enables “Run workflow” button in GitHub UI
     inputs:
       environment:
