@@ -1,12 +1,8 @@
 name: just_checking
 on:
   pull_request:
+    types: [opened, reopened, synchronize]
   workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Deploy environment'
-        required: false
-        default: 'staging'
 
 jobs:
   build:
