@@ -3,15 +3,8 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
-    
   workflow_dispatch:       # ← enables “Run workflow” button in GitHub UI
-    inputs:
-      environment:
-        description: 'Deploy environment'
-        required: false
-        default: 'staging'
-  
+
 jobs:
   build:
     runs-on: ubuntu-22.04
