@@ -9,12 +9,12 @@ if those libraries are missing.  The goal is to keep the public interface
 stable even in constrained environments where external packages may not be
 installed.
 """
+
 from __future__ import annotations
 
 import json
 import logging
 import random
-import time
 from collections.abc import Iterable
 from html.parser import HTMLParser
 from pathlib import Path
@@ -70,8 +70,7 @@ log = logging.getLogger(__name__)
 # ----------------------------------------------------------------------------
 DEFAULT_HEADERS = {
     "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:117.0) "
-        "Gecko/20100101 Firefox/117.0"
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:117.0) " "Gecko/20100101 Firefox/117.0"
     ),
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "en-US,en;q=0.5",
@@ -90,6 +89,7 @@ RAW_DIR = Path("diagnostics/raw")
 # ----------------------------------------------------------------------------
 # Helper functions
 # ----------------------------------------------------------------------------
+
 
 def _normalize_domain(entry: str | dict) -> str | None:
     """Extract a valid domain/netloc from *entry* or return *None*."""
@@ -170,6 +170,7 @@ class _FeedHTMLParser(HTMLParser):
 # Feed discovery helpers
 # ----------------------------------------------------------------------------
 
+
 def _discover_with_bs(base_url: str, html: str) -> list[str]:
     """Discover feeds using BeautifulSoup if available."""
     try:
@@ -195,9 +196,8 @@ def _fallback_feed_endpoints(base_url: str) -> list[str]:
         probe = urljoin(base_url, p)
         try:
             with urlopen(probe, timeout=5) as resp:  # type: ignore[attr-defined]
-                if (
-                    resp.status < 400
-                    and resp.headers.get("Content-Type", "").startswith("application")
+                if resp.status < 400 and resp.headers.get("Content-Type", "").startswith(
+                    "application"
                 ):
                     found.append(probe)
         except Exception:  # noqa: BLE001
@@ -213,6 +213,7 @@ def _save_raw_html(domain: str, body: bytes):
 # ----------------------------------------------------------------------------
 # Public API
 # ----------------------------------------------------------------------------
+
 
 def discover_feeds(domains: Iterable[str]) -> dict[str, list[str]]:
     """Return mapping **domain → [feed URLs]**."""

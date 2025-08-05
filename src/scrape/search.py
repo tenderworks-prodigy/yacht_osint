@@ -25,22 +25,22 @@ except Exception:
                 self.suffix = suffix
 
         @staticmethod
-        def extract(url: str) -> "ExtractResult":
+        def extract(url: str) -> ExtractResult:
             parsed = urlparse(url)
             host = parsed.netloc
             # strip port
-            if ':' in host:
-                host = host.split(':', 1)[0]
-            parts = host.split('.')
+            if ":" in host:
+                host = host.split(":", 1)[0]
+            parts = host.split(".")
             if len(parts) >= 2:
                 domain = parts[-2]
                 suffix = parts[-1]
             elif parts:
                 domain = parts[0]
-                suffix = ''
+                suffix = ""
             else:
-                domain = ''
-                suffix = ''
+                domain = ""
+                suffix = ""
             return _TldExtractStub.ExtractResult(domain, suffix)
 
     tldextract = _TldExtractStub()  # type: ignore
