@@ -6,7 +6,44 @@ import random
 import time
 
 import requests
-import tldextract
+
+# Attempt to import tldextract, which provides accurate domain parsing. In
+# restricted environments this library may be unavailable; in that case fall
+# back to a simple parser using urllib.parse. The fallback returns the host
+# component of the URL which is sufficient for de‑duplication in the search
+# module. Tests that monkey‑patch tldextract.extract will continue to work
+# because the attribute exists on the stub.
+try:
+    import tldextract  # type: ignore
+except Exception:
+    from urllib.parse import urlparse
+
+    class _TldExtractStub:
+        class ExtractResult:
+            def __init__(self, domain: str, suffix: str) -> None:
+                self.domain = domain
+                self.suffix = suffix
+
+        @staticmethod
+        def extract(url: str) -> ExtractResult:
+            parsed = urlparse(url)
+            host = parsed.netloc
+            # strip port
+            if ":" in host:
+                host = host.split(":", 1)[0]
+            parts = host.split(".")
+            if len(parts) >= 2:
+                domain = parts[-2]
+                suffix = parts[-1]
+            elif parts:
+                domain = parts[0]
+                suffix = ""
+            else:
+                domain = ""
+                suffix = ""
+            return _TldExtractStub.ExtractResult(domain, suffix)
+
+    tldextract = _TldExtractStub()  # type: ignore
 
 from src.common.env import require_env
 
@@ -47,7 +84,7 @@ def _search_google(query: str, num: int = 10) -> list[str]:
 
         if resp.status_code == 429:
             # rate limit: increment circuit breaker and apply exponential backoff with jitter
-            _consecutive_429s += 1
+            _consecutive_429s = 1
             wait = BACKOFF_BASE * 2**attempt + random.uniform(0, 1)
             log.warning(
                 "rate limit hit on CSE 429, retrying in %.1fs (%s/%s) endpoint=%s",
