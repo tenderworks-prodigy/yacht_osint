@@ -8,12 +8,15 @@ import os
 try:
     from dotenv import load_dotenv  # type: ignore
 except Exception:
+
     def load_dotenv(*_args: object, **_kwargs: object) -> None:
         return None
+
 
 try:
     from pythonjsonlogger import jsonlogger  # type: ignore
 except Exception:
+
     class _JSONLoggerStub:
         class JsonFormatter(logging.Formatter):  # type: ignore
             pass

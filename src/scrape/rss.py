@@ -138,9 +138,7 @@ class _FeedHTMLParser(HTMLParser):
         self.a_count = 0
 
     def handle_starttag(
-        self,
-        tag: str,
-        attrs: list[tuple[str, str | None]]
+        self, tag: str, attrs: list[tuple[str, str | None]]
     ):  # type: ignore[override]
         tag = tag.lower()
         if tag == "a":

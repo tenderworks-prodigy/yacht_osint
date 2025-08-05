@@ -16,14 +16,12 @@ import logging
 import sys
 from html.parser import HTMLParser
 from pathlib import Path
-from typing import List
 from urllib.parse import urljoin, urlparse
 from urllib.request import Request, urlopen
 
 DEFAULT_HEADERS = {
     "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:117.0) "
-        "Gecko/20100101 Firefox/117.0"
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:117.0) " "Gecko/20100101 Firefox/117.0"
     ),
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "en-US,en;q=0.5",
@@ -49,7 +47,7 @@ class _TagExtractor(HTMLParser):
     def __init__(self, base_url: str) -> None:
         super().__init__()
         self.base_url = base_url
-        self.feed_links: List[str] = []
+        self.feed_links: list[str] = []
         self.a_count: int = 0
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
@@ -120,9 +118,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Diagnose feed discovery for a domain or URL")
     parser.add_argument("url", help="Domain or full URL to probe")
     parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Output full JSON instead of pretty printing"
+        "--json", action="store_true", help="Output full JSON instead of pretty printing"
     )
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(message)s")
