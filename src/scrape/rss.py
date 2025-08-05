@@ -218,7 +218,6 @@ def _save_raw_html(domain: str, body: bytes):
 # ----------------------------------------------------------------------------
 
 
-@validate_io
 def discover_feeds(domains: Iterable[str]) -> dict[str, list[str]]:
     """Return mapping **domain → [feed URLs]**."""
     feeds: dict[str, list[str]] = {}
