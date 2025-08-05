@@ -1,7 +1,7 @@
 name: just_checking
 on:
   pull_request:
-  workflow_dispatch:       # ← enables “Run workflow” button in GitHub UI
+  workflow_dispatch:
     inputs:
       environment:
         description: 'Deploy environment'
@@ -13,21 +13,28 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+
       - uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+
+      # ← Insert here, before pip installs
       - name: Install Playwright system deps
         run: npx playwright install-deps
+
       - name: Install dev tools
         run: pip install ruff==0.12.5 black coverage[toml]
+
       - name: Quality gate
         run: |
           ruff check --fix .
           black --check .
+
       - name: Export CSV
         working-directory: ${{ github.workspace }}
         run: |
@@ -36,12 +43,15 @@ jobs:
           find . -maxdepth 2 -type f
           find . -name yachts.csv
           test -f exports/yachts.csv
+
       - name: Debug workspace
         working-directory: ${{ github.workspace }}
         run: echo "PWD=$(pwd)" && find . -maxdepth 3 -type f
+
       - name: Tests
         working-directory: ${{ github.workspace }}
         run: pytest -q --cov=src --cov-report=xml
+
       - name: Upload exports
         if: always()
         uses: actions/upload-artifact@v4
