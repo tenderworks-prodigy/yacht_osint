@@ -1,4 +1,4 @@
-name: yacht-osint-nightly
+name: OSINT_buddy
 on:
 #  schedule:
 #    - cron: '0 2 * * *'
