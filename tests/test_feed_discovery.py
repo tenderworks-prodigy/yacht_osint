@@ -3,7 +3,7 @@ from pathlib import Path
 import vcr
 import vcr.stubs
 
-from src.scrape import parse
+from src.scrape import parse, rss
 
 vcr.stubs.VCRHTTPResponse.version_string = "HTTP/1.1"
 
@@ -58,3 +58,20 @@ def test_integration_atom():
 def test_integration_none():
     feeds = parse.discover_feeds("https://example.com")
     assert feeds[0].startswith("https://example.com")
+
+
+def test_feed_html_parser_handles_jsonfeed(monkeypatch):
+    html = (
+        "<html><head>"
+        '<link rel="alternate" type="application/rss+xml; charset=UTF-8" href="/rss.xml"/>'
+        '<link rel="alternate" type="application/feed+json" href="/feed.json"/>'
+        '<script type="application/ld+json">{"url": "/feed.json"}</script>'
+        "</head></html>"
+    )
+    monkeypatch.setattr(rss, "_is_feed_url", lambda url: True)
+    links = rss._discover_with_bs("https://example.com", html)
+    parser = rss._FeedHTMLParser("https://example.com")
+    parser.feed(html)
+    combined = set(links + parser.feed_links)
+    assert "https://example.com/rss.xml" in combined
+    assert "https://example.com/feed.json" in combined

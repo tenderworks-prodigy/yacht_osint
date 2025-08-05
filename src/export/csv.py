@@ -58,7 +58,7 @@ def run(db_path: Path = Path("yachts.duckdb")) -> Path:
     required = {"name", "length_m"}
     if not required.issubset(df.columns):
         raise ValueError(f"missing columns: {required - set(df.columns)}")
-    with out.open("w", newline="") as f:
+    with out.open("w", newline="", encoding="utf-8-sig") as f:
         df.to_csv(f, index=False)
 
     if not out.exists():

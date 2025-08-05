@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+import random
 import time
 
 import requests
@@ -84,13 +85,20 @@ def _search_google(query: str, num: int = 10) -> list[str]:
 
     key = require_env("GOOGLE_CSE_API_KEY")
     cx = require_env("GOOGLE_CSE_CX")
+    assert key and cx, "GOOGLE_CSE_* must be set"
 
     try:
         resp = _cse_request({"key": key, "cx": cx, "q": query, "num": num})
+        _consecutive_429s = 0
     except requests.RequestException as exc:  # pragma: no cover - network errors
         if "429" in str(exc):
-            _consecutive_429s = 1
-            log.warning("rate limit persisted after %s retries", MAX_RETRIES)
+            _consecutive_429s += 1
+            if _consecutive_429s > 3:
+                delay = random.uniform(1, 3)
+                log.warning(
+                    "rate limit persisted %s times; sleeping %.2fs", _consecutive_429s, delay
+                )
+                time.sleep(delay)
             return []
         log.error("fatal in _search_google: %s", exc, exc_info=True)
         raise

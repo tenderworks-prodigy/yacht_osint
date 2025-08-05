@@ -13,4 +13,4 @@ def test_smoke_pipeline(tmp_path, monkeypatch):
     (tmp_path / "exports").mkdir()
     (tmp_path / "exports" / "new_data.json").write_text('[{"name": "A", "length_m": 1}]')
     out = export_csv.run(tmp_path / "missing.duckdb")
-    assert Path(out).read_text() == fixture.read_text()
+    assert Path(out).read_text(encoding="utf-8-sig") == fixture.read_text(encoding="utf-8")

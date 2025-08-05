@@ -20,52 +20,15 @@ from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
+import feedfinder2
+import feedparser
+from bs4 import BeautifulSoup
+
 from src.common.diagnostics import validate_io
-
-# ----------------------------------------------------------------------------
-# Optional third‑party dependencies
-# ----------------------------------------------------------------------------
-try:
-    import feedfinder2  # type: ignore
-    from bs4 import BeautifulSoup  # type: ignore
-except Exception:
-
-    class _FeedFinder2Stub:  # type: ignore
-        """Fallback stub when *feedfinder2* is unavailable."""
-
-        @staticmethod
-        def find_feeds(url: str) -> list[str]:
-            return []
-
-    feedfinder2 = _FeedFinder2Stub()  # type: ignore
-
-    class _SimpleSoup:  # pylint: disable=too-few-public-methods
-        def __init__(self, markup: str, *_: object, **__: object) -> None:  # noqa: D401
-            self.markup = markup
-
-        def find_all(self, *_: object, **__: object):  # pragma: no cover
-            return []
-
-    BeautifulSoup = _SimpleSoup  # type: ignore
-
-try:
-    import feedparser  # type: ignore
-except Exception:
-
-    class _FeedParserStub:  # type: ignore
-        """Fallback stub when *feedparser* is unavailable."""
-
-        @staticmethod
-        def parse(_: str):  # noqa: D401
-            return type("_Feed", (), {"entries": []})()
-
-    feedparser = _FeedParserStub()  # type: ignore
 
 # Ensure *feedfinder2* uses the same soup implementation to avoid warnings.
 if hasattr(feedfinder2, "BeautifulSoup"):
-    feedfinder2.BeautifulSoup = lambda markup, *a, **k: BeautifulSoup(
-        markup, "lxml", *a, **k
-    )  # type: ignore
+    feedfinder2.BeautifulSoup = lambda markup, *a, **k: BeautifulSoup(markup, "lxml", *a, **k)
 
 log = logging.getLogger(__name__)
 
@@ -86,6 +49,10 @@ FALLBACK_PATHS: tuple[str, ...] = (
     "rss.xml",
     "atom.xml",
     ".rss",
+    "feed.xml",
+    "index.xml",
+    "feeds/posts/default",
+    "feed.json",
 )
 
 RAW_DIR = Path("diagnostics/raw")
@@ -128,6 +95,25 @@ def _get_html(url: str) -> tuple[bytes, int, str]:
         raise
 
 
+def _is_feed_url(url: str) -> bool:
+    """Return True if *url* appears to be a feed endpoint."""
+    from urllib.request import urlopen
+
+    try:
+        with urlopen(url, timeout=5) as resp:  # type: ignore[attr-defined]
+            ct = resp.headers.get("Content-Type", "")
+            if resp.status >= 400:
+                log.debug("reject %s status=%s", url, resp.status)
+                return False
+            if not ct.startswith("application"):
+                log.debug("reject %s content-type=%s", url, ct)
+                return False
+    except Exception as exc:  # noqa: BLE001
+        log.debug("reject %s error=%s", url, exc)
+        return False
+    return True
+
+
 class _FeedHTMLParser(HTMLParser):
     """Extract <link rel="alternate" …> pointing to feeds and count <a> tags."""
 
@@ -150,14 +136,17 @@ class _FeedHTMLParser(HTMLParser):
             href = attrs_dict.get("href")
             if not href:
                 return
+            candidate = urljoin(self.base_url, href)
             if (
-                "rss" in type_
+                rel == "alternate"
+                or type_.startswith("application/rss+xml")
+                or type_.startswith("application/atom+xml")
+                or type_.startswith("application/feed+json")
+                or "rss" in type_
                 or "atom" in type_
-                or "application/rss+xml" in type_
-                or "application/atom+xml" in type_
-                or rel == "alternate"
             ):
-                self.feed_links.append(urljoin(self.base_url, href))
+                if _is_feed_url(candidate):
+                    self.feed_links.append(candidate)
 
 
 # ----------------------------------------------------------------------------
@@ -174,8 +163,38 @@ def _discover_with_bs(base_url: str, html: str) -> list[str]:
             rel = (link.get("rel") or "").lower()
             type_ = (link.get("type") or "").lower()
             href = link.get("href")
-            if href and ("rss" in type_ or "atom" in type_ or rel == "alternate"):
-                links.append(urljoin(base_url, href))
+            if href and (
+                "rss" in type_
+                or "atom" in type_
+                or type_.startswith("application/rss+xml")
+                or type_.startswith("application/atom+xml")
+                or type_.startswith("application/feed+json")
+                or rel == "alternate"
+            ):
+                candidate = urljoin(base_url, href)
+                if _is_feed_url(candidate):
+                    links.append(candidate)
+
+        for script in soup.select('script[type="application/ld+json"]'):
+            try:
+                data = json.loads(script.string or "")
+            except Exception:  # pragma: no cover - invalid JSON
+                continue
+
+            def _extract(obj):
+                if isinstance(obj, str) and "feed" in obj:
+                    cand = urljoin(base_url, obj)
+                    if _is_feed_url(cand):
+                        links.append(cand)
+                elif isinstance(obj, dict):
+                    for v in obj.values():
+                        _extract(v)
+                elif isinstance(obj, list):
+                    for item in obj:
+                        _extract(item)
+
+            _extract(data)
+
         return links
     except Exception:  # noqa: BLE001 – soup may be stub
         return []
@@ -184,17 +203,10 @@ def _discover_with_bs(base_url: str, html: str) -> list[str]:
 def _fallback_feed_endpoints(base_url: str) -> list[str]:
     """Probe common *FALLBACK_PATHS* under *base_url*."""
     found: list[str] = []
-    from urllib.request import urlopen  # late import to avoid ssl cost if unused
-
     for p in FALLBACK_PATHS:
         probe = urljoin(base_url, p)
-        try:
-            with urlopen(probe, timeout=5) as resp:  # type: ignore[attr-defined]
-                content_type = resp.headers.get("Content-Type", "")
-                if resp.status < 400 and content_type.startswith("application"):
-                    found.append(probe)
-        except Exception:  # noqa: BLE001
-            continue
+        if _is_feed_url(probe):
+            found.append(probe)
     return found
 
 
@@ -223,19 +235,16 @@ def discover_feeds(domains: Iterable[str]) -> dict[str, list[str]]:
 
         found: list[str] = []
         if html:
-            # Prefer *feedfinder2* if present.
             try:
-                found = feedfinder2.find_feeds(base_url) or []  # type: ignore[attr-defined]
+                found = feedfinder2.find_feeds(base_url) or []
             except Exception:  # noqa: BLE001
                 found = []
 
-            # If still nothing, DIY parsing.
-            if not found:
-                # Try BeautifulSoup‑based discovery first.
-                found = _discover_with_bs(base_url, html)
+            extra = _discover_with_bs(base_url, html)
+            if extra:
+                found.extend(extra)
 
             if not found:
-                # Fallback to cheap HTMLParser.
                 parser = _FeedHTMLParser(base_url)
                 parser.feed(html)
                 found = parser.feed_links
@@ -246,7 +255,14 @@ def discover_feeds(domains: Iterable[str]) -> dict[str, list[str]]:
             _save_raw_html(normalized, html_bytes)
 
         if found:
-            feeds[normalized] = found
+            unique: list[str] = []
+            seen: set[str] = set()
+            for url in found:
+                norm = urlparse(url)._replace(query="", fragment="").geturl()
+                if norm not in seen:
+                    seen.add(norm)
+                    unique.append(norm)
+            feeds[normalized] = unique
     return feeds
 
 
