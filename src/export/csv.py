@@ -4,6 +4,7 @@ import json
 import logging
 import duckdb
 import pandas as pd
+from src.common.diagnostics import validate_io
 from src.sensors import sensor
 
 EXPORT_DIR = Path("exports")
@@ -12,6 +13,7 @@ log = logging.getLogger(__name__)
 
 
 @sensor("export")
+@validate_io
 def run(db_path: Path = Path("yachts.duckdb")) -> Path:
     EXPORT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -35,25 +37,27 @@ def run(db_path: Path = Path("yachts.duckdb")) -> Path:
                     records = [records]
                 elif not isinstance(records, list):
                     raise TypeError("export JSON must be list or dict")
-                df = pd.DataFrame(records)
-                # defensive: ensure expected columns
-                if not all(col in df.columns for col in ["name", "length_m"]):
-                    missing = [c for c in ["name", "length_m"] if c not in df.columns]
-                    log.warning(
-                        "new_data JSON missing expected columns %s; producing empty dataframe",
-                        missing,
-                    )
-                    df = pd.DataFrame(columns=["name", "length_m"])
-                else:
+                if records:
+                    df = pd.DataFrame(records)
+                    required = {"name", "length_m"}
+                    if not required.issubset(df.columns):
+                        missing = required - set(df.columns)
+                        raise ValueError(f"missing columns: {missing}")
                     df = df[["name", "length_m"]]
+                else:
+                    df = pd.DataFrame(columns=["name", "length_m"])
             except Exception as exc:
-                log.warning("failed to load %s: %s", json_path, exc)
+                log.error("fatal in run: %s", exc, exc_info=True)
+                raise
 
     out = EXPORT_DIR / "yachts.csv"
     log.debug("cwd=%s, EXPORT_DIR=%s, writing to %s", Path.cwd(), EXPORT_DIR, out)
 
     if df.empty:
         df = pd.DataFrame(columns=["name", "length_m"])
+    required = {"name", "length_m"}
+    if not required.issubset(df.columns):
+        raise ValueError(f"missing columns: {required - set(df.columns)}")
     with out.open("w", newline="") as f:
         df.to_csv(f, index=False)
 

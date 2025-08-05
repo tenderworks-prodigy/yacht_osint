@@ -3,17 +3,29 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:       # ← enables “Run workflow” button in GitHub UI
+    inputs:
+      environment:
+        description: 'Deploy environment'
+        required: false
+        default: 'staging'
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Install deps
-        run: pip install -r requirements.txt
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+      - name: Install Playwright
+        run: |
+          pip install -r requirements.txt
+          playwright install --with-deps chromium
       - name: Install dev tools
         run: pip install ruff==0.12.5 black coverage[toml]
       - name: Quality gate

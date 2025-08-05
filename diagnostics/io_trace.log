@@ -1,0 +1,9 @@
+✅ 1 queries, 1 unique domains
+run input=list len=1 output=list len=1
+discover_feeds input=list len=1 output=dict len=1
+fetch_entries input=dict len=1 output=dict len=1
+run input=list len=1 output=dict len=1
+run input=list len=1 output=NoneType len=None
+saved 1 rows -> exports/yachts.csv
+run input=PosixPath len=None output=PosixPath len=None
+SENSOR: {"tag": "export", "fn": "run", "file": "diagnostics.py", "ok": true, "dt_ms": 6.58, "args_sha": "50f1400d"}

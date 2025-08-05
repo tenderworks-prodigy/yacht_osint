@@ -20,6 +20,10 @@ from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
+from src.common.browser_fetch import fetch_with_browser
+from src.common.diagnostics import validate_io
+from src.common.throttle import sleep
+
 # ----------------------------------------------------------------------------
 # Optional third‑party dependencies
 # ----------------------------------------------------------------------------
@@ -61,7 +65,9 @@ except Exception:
 
 # Ensure *feedfinder2* uses the same soup implementation to avoid warnings.
 if hasattr(feedfinder2, "BeautifulSoup"):
-    feedfinder2.BeautifulSoup = lambda markup, *a, **k: BeautifulSoup(markup, "lxml", *a, **k)  # type: ignore
+    feedfinder2.BeautifulSoup = lambda markup, *a, **k: BeautifulSoup(
+        markup, "lxml", *a, **k
+    )  # type: ignore
 
 log = logging.getLogger(__name__)
 
@@ -109,31 +115,27 @@ def _normalize_domain(entry: str | dict) -> str | None:
     return parsed.netloc
 
 
+def _requests_fetch(url: str) -> tuple[bytes | None, int, str]:
+    import requests  # type: ignore
+
+    resp = requests.get(url, headers=DEFAULT_HEADERS, timeout=10)
+    return resp.content, resp.status_code, resp.headers.get("Content-Type", "")
+
+
 def _get_html(url: str) -> tuple[bytes | None, int, str]:
-    """Return *(body, status_code, content_type)* for *url* (or *(None, 0, "")*)."""
+    """Return *(body, status_code, content_type)* for *url*.
+
+    Any failure is logged and re-raised so calling code fails fast.
+    """
     try:
-        import requests  # type: ignore
-
-        try:
-            resp = requests.get(url, headers=DEFAULT_HEADERS, timeout=10)
-            return resp.content, resp.status_code, resp.headers.get("Content-Type", "")
-        except Exception as exc:  # noqa: BLE001
-            log.warning("request failed for %s: %s", url, exc)
-            return None, 0, ""
-    except Exception:
-        # Fall back to stdlib *urllib* to avoid hard dependency on *requests*.
-        from urllib.request import Request, urlopen
-
-        try:
-            req = Request(url, headers=DEFAULT_HEADERS)
-            with urlopen(req, timeout=10) as resp:  # type: ignore[attr-defined]
-                body: bytes = resp.read()
-                status: int = getattr(resp, "status", 0)
-                content_type: str = resp.headers.get("Content-Type", "")
-                return body, status, content_type
-        except Exception as exc:  # noqa: BLE001
-            log.warning("request failed for %s: %s", url, exc)
-            return None, 0, ""
+        sleep()
+        body, status, ctype = _requests_fetch(url)
+        if status in (403, 429) or b"cf-browser-verification" in (body or b""):
+            body, status, ctype = fetch_with_browser(url)
+        return body, status, ctype
+    except Exception as exc:  # noqa: BLE001
+        log.error("fatal in _get_html: %s", exc, exc_info=True)
+        raise
 
 
 class _FeedHTMLParser(HTMLParser):
@@ -145,7 +147,9 @@ class _FeedHTMLParser(HTMLParser):
         self.feed_links: list[str] = []
         self.a_count = 0
 
-    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]):  # type: ignore[override]
+    def handle_starttag(
+        self, tag: str, attrs: list[tuple[str, str | None]]
+    ):  # type: ignore[override]
         tag = tag.lower()
         if tag == "a":
             self.a_count += 1
@@ -196,9 +200,8 @@ def _fallback_feed_endpoints(base_url: str) -> list[str]:
         probe = urljoin(base_url, p)
         try:
             with urlopen(probe, timeout=5) as resp:  # type: ignore[attr-defined]
-                if resp.status < 400 and resp.headers.get("Content-Type", "").startswith(
-                    "application"
-                ):
+                content_type = resp.headers.get("Content-Type", "")
+                if resp.status < 400 and content_type.startswith("application"):
                     found.append(probe)
         except Exception:  # noqa: BLE001
             continue
@@ -224,7 +227,7 @@ def discover_feeds(domains: Iterable[str]) -> dict[str, list[str]]:
             continue
 
         base_url = f"https://{normalized}"
-        html_bytes, status, content_type = _get_html(base_url)
+        html_bytes, _, _ = _get_html(base_url)
         html = html_bytes.decode("utf-8", "ignore") if html_bytes else ""
 
         found: list[str] = []
@@ -256,6 +259,7 @@ def discover_feeds(domains: Iterable[str]) -> dict[str, list[str]]:
     return feeds
 
 
+@validate_io
 def fetch_entries(feed_map: dict[str, list[str]], limit: int = 20) -> dict[str, list[dict]]:
     """Read up to *limit* entries per *feed_map* URL using *feedparser*."""
     results: dict[str, list[dict]] = {}
@@ -278,9 +282,15 @@ def fetch_entries(feed_map: dict[str, list[str]], limit: int = 20) -> dict[str, 
     return results
 
 
+@validate_io
 def run(domains: list[str]) -> dict[str, list[dict]]:
     feeds = discover_feeds(domains)
-    return fetch_entries(feeds)
+    if not feeds:
+        raise ValueError("no feeds discovered")
+    entries = fetch_entries(feeds)
+    if any(len(v) == 0 for v in entries.values()):
+        raise ValueError("no entries fetched for some domains")
+    return entries
 
 
 if __name__ == "__main__":  # pragma: no cover – manual debug entry point

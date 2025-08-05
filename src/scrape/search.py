@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import logging
 import os
-import random
 import time
 
 import requests
+from tenacity import retry, stop_after_attempt, wait_random_exponential
+
+from src.common.diagnostics import validate_io
 
 # Attempt to import tldextract, which provides accurate domain parsing. In
 # restricted environments this library may be unavailable; in that case fall
@@ -59,6 +61,19 @@ MAX_CONSECUTIVE = int(os.environ.get("CSE_MAX_CONSECUTIVE", "5"))
 _consecutive_429s = 0
 
 
+@retry(
+    reraise=True,
+    stop=stop_after_attempt(MAX_RETRIES),
+    wait=wait_random_exponential(multiplier=BACKOFF_BASE),
+)
+def _cse_request(params: dict) -> requests.Response:
+    resp = requests.get(CSE_URL, params=params, timeout=10)
+    if resp.status_code == 429:
+        raise requests.RequestException("429")
+    resp.raise_for_status()
+    return resp
+
+
 def _search_google(query: str, num: int = 10) -> list[str]:
     """Query Google CSE and return root domains."""
     global _consecutive_429s
@@ -70,44 +85,17 @@ def _search_google(query: str, num: int = 10) -> list[str]:
     key = require_env("GOOGLE_CSE_API_KEY")
     cx = require_env("GOOGLE_CSE_CX")
 
-    payload = {}
-    for attempt in range(MAX_RETRIES):
-        try:
-            resp = requests.get(
-                CSE_URL,
-                params={"key": key, "cx": cx, "q": query, "num": num},
-                timeout=10,
-            )
-        except Exception as exc:  # pragma: no cover - network errors
-            log.error("CSE request failed: %s", exc)
-            raise
-
-        if resp.status_code == 429:
-            # rate limit: increment circuit breaker and apply exponential backoff with jitter
+    try:
+        resp = _cse_request({"key": key, "cx": cx, "q": query, "num": num})
+    except requests.RequestException as exc:  # pragma: no cover - network errors
+        if "429" in str(exc):
             _consecutive_429s = 1
-            wait = BACKOFF_BASE * 2**attempt + random.uniform(0, 1)
-            log.warning(
-                "rate limit hit on CSE 429, retrying in %.1fs (%s/%s) endpoint=%s",
-                wait,
-                attempt + 1,
-                MAX_RETRIES,
-                CSE_URL,
-            )
-            time.sleep(wait)
-            continue
+            log.warning("rate limit persisted after %s retries", MAX_RETRIES)
+            return []
+        log.error("fatal in _search_google: %s", exc, exc_info=True)
+        raise
 
-        _consecutive_429s = 0
-        try:
-            resp.raise_for_status()
-            payload = resp.json()
-        except Exception as exc:  # pragma: no cover - network errors
-            log.error("CSE request failed: %s", exc)
-            raise
-        break
-    else:
-        log.warning("rate limit persisted after %s retries", MAX_RETRIES)
-        return []
-
+    payload = resp.json()
     domains: list[str] = []
     for item in payload.get("items", []):
         url = item.get("link")
@@ -136,9 +124,9 @@ def _search_bing(query: str, num: int = 10) -> list[str]:
         )
         resp.raise_for_status()
         data = resp.json()
-    except Exception:
-        log.warning("bing search failed for %s", query)
-        return []
+    except Exception as exc:
+        log.error("fatal in _search_bing: %s", exc, exc_info=True)
+        raise
     links = [
         item.get("url") for item in data.get("webPages", {}).get("value", []) if item.get("url")
     ]
@@ -157,13 +145,15 @@ def _search_duckduckgo(query: str, num: int = 10) -> list[str]:
         return []
     try:
         resp = requests.get(
-            api_url, params={"q": query, "format": "json", "no_redirect": 1}, timeout=10
+            api_url,
+            params={"q": query, "format": "json", "no_redirect": 1},
+            timeout=10,
         )
         resp.raise_for_status()
         data = resp.json()
-    except Exception:
-        log.warning("duckduckgo search failed for %s", query)
-        return []
+    except Exception as exc:
+        log.error("fatal in _search_duckduckgo: %s", exc, exc_info=True)
+        raise
 
     links = [r.get("firstURL") for r in data.get("RelatedTopics", []) if r.get("firstURL")]
 
@@ -184,6 +174,7 @@ def search_sites(query: str, num: int = 10) -> list[str]:
     return list(dict.fromkeys(results))
 
 
+@validate_io
 def run(queries: list[str], num: int = 10) -> list[dict]:
     results: list[dict] = []
     for q in queries:

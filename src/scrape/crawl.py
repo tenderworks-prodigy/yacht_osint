@@ -5,6 +5,7 @@ from pathlib import Path
 
 from jsonschema import ValidationError, validate
 
+from src.common.diagnostics import validate_io
 from src.common.http import get as http_get
 
 
@@ -53,6 +54,7 @@ def load_feeds(path: Path) -> list[dict]:
         return []
 
 
+@validate_io
 def run(feeds: Iterable[dict] | None = None, feeds_file: Path | None = None) -> None:
     """Crawl the provided feeds."""
     if feeds is None:

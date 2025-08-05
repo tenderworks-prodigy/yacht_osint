@@ -33,8 +33,15 @@ jobs:
           key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
           restore-keys: ${{ runner.os }}-pip-
 
-      - name: Install dependencies
-        run: pip install -r requirements.txt
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+
+      - name: Install Playwright
+        run: |
+          pip install -r requirements.txt
+          playwright install --with-deps chromium
 
       - name: Install dev tools
         run: |
@@ -107,6 +114,10 @@ jobs:
           if not expected.issubset(df.columns):
               sys.exit("Missing columns")
           EOF
+
+      - name: Pytest smoke pipeline
+        working-directory: ${{ github.workspace }}
+        run: pytest -q tests/smoke_pipeline.py
 
       - name: Generate DQ report
         run: python -m src.reporting.dq_report
