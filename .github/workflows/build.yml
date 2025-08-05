@@ -19,9 +19,10 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
 
-      # ← Insert here, before pip installs
-      - name: Install Playwright system deps
-        run: npx playwright install-deps
+      - name: Install Playwright system dependencies
+        run: |
+          pip install playwright          # ensure CLI is available
+          playwright install --with-deps  # installs OS libs
 
       - name: Install dev tools
         run: pip install ruff==0.12.5 black coverage[toml]
