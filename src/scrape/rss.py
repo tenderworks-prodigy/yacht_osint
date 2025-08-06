@@ -285,13 +285,20 @@ def fetch_entries(feed_map: dict[str, list[str]], limit: int = 20) -> dict[str, 
 @validate_io
 def run(domains: list[str]) -> dict[str, list[dict]]:
     feeds = discover_feeds(domains)
-    if not feeds:
-        raise ValueError("no feeds discovered")
     entries = fetch_entries(feeds)
-    if any(len(v) == 0 for v in entries.values()):
-        raise ValueError("no entries fetched for some domains")
-    return entries
+    
+    # WARN about—but don’t fail on—domains with zero entries
+    empty = [d for d, lst in entries.items() if not lst]
+    if empty:
+        log.warning(
+            "no entries fetched for %d domains: %s",
+            len(empty),
+            ", ".join(empty),
+        )
 
+    # return only domains that actually yielded entries
+    good = {d: lst for d, lst in entries.items() if lst}
+    return good
 
 if __name__ == "__main__":  # pragma: no cover – manual debug entry point
     import sys
