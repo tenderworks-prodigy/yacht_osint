@@ -11,7 +11,7 @@ permissions:
 jobs:
   build:
     environment: DATA
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     env:
       HF_TOKEN: ${{ secrets.HF_TOKEN }}
       GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
@@ -22,7 +22,6 @@ jobs:
       PYTHONPATH: ${{ github.workspace }}
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -38,10 +37,10 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
 
-      - name: Install Playwright
+      - name: Install deps & Playwright
         run: |
           pip install -r requirements.txt
-          playwright install --with-deps chromium
+          playwright install chromium
 
       - name: Install dev tools
         run: |
