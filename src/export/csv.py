@@ -1,9 +1,10 @@
 """
-Create exports/yachts.csv from either a DuckDB file or a JSON fallback.
+Create *exports/yachts.csv* from either a DuckDB file or a JSON fallback.
 
-The public contract is:
-    • Always produce `exports/yachts.csv`
-    • Columns must be exactly ["name", "length_m"]   (all tests rely on this)
+Contract required by the test-suite
+-----------------------------------
+• The file is always produced, even if there are zero rows.
+• Header must be exactly ["name", "length_m"] (order matters).
 """
 
 from __future__ import annotations
@@ -11,6 +12,7 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
+from typing import Iterable, List
 
 import duckdb
 import pandas as pd
@@ -22,72 +24,80 @@ log = logging.getLogger(__name__)
 
 EXPORT_DIR = Path("exports")
 CSV_PATH = EXPORT_DIR / "yachts.csv"
+REQUIRED = ["name", "length_m"]
 
 
+# --------------------------------------------------------------------------- #
+# helpers                                                                     #
+# --------------------------------------------------------------------------- #
+def _columns_in_table(con: duckdb.DuckDBPyConnection, table: str) -> set[str]:
+    """Return the set of column names that exist in *table*."""
+    rows: List[tuple] = con.execute(f"PRAGMA table_info('{table}')").fetchall()
+    return {r[1] for r in rows}  # r[1] == column name
+
+
+def _select_from_yachts(db_path: Path) -> pd.DataFrame:
+    """Return DataFrame with canonical column names from *yachts* table."""
+    con = duckdb.connect(str(db_path))
+    try:
+        cols = _columns_in_table(con, "yachts")
+        name_col = "yacht_name" if "yacht_name" in cols else "name" if "name" in cols else None
+        len_col = "LOA_m" if "LOA_m" in cols else "length_m" if "length_m" in cols else None
+
+        if name_col and len_col:
+            query = (
+                f"SELECT {name_col} AS name, {len_col} AS length_m "
+                "FROM yachts"
+            )
+            return con.execute(query).fetch_df()
+    finally:
+        con.close()
+    return pd.DataFrame(columns=REQUIRED)
+
+
+def _load_json_fallback() -> pd.DataFrame:
+    json_path = EXPORT_DIR / "new_data.json"
+    if not json_path.exists():
+        return pd.DataFrame(columns=REQUIRED)
+
+    try:
+        records = json.loads(json_path.read_text())
+        if isinstance(records, dict):
+            records = [records]
+        if not isinstance(records, list):
+            raise TypeError("export JSON must be list or dict")
+        if not records:
+            return pd.DataFrame(columns=REQUIRED)
+        df = pd.DataFrame(records)
+        return df.rename(
+            columns={"yacht_name": "name", "LOA_m": "length_m"}
+        )
+    except Exception as exc:  # noqa: BLE001
+        log.error("could not load JSON fallback: %s", exc, exc_info=True)
+        return pd.DataFrame(columns=REQUIRED)
+
+
+# --------------------------------------------------------------------------- #
+# public entry-point                                                          #
+# --------------------------------------------------------------------------- #
 @sensor("export")
 @validate_io
 def run(db_path: Path = Path("yachts.duckdb")) -> Path:
-    """Return the path to **exports/yachts.csv** (creating dirs if required)."""
+    """Write **exports/yachts.csv** and return its Path."""
     EXPORT_DIR.mkdir(parents=True, exist_ok=True)
 
-    # ------------------------------------------------------------------ #
-    # 1) Try to read from DuckDB (if the file exists)                    #
-    # ------------------------------------------------------------------ #
-    df: pd.DataFrame
-    if db_path.exists():
-        con = duckdb.connect(str(db_path))
-        try:
-            # Use aliases *different* from source column names to avoid the
-            # “referenced before defined” binder error.
-            df = con.execute(
-                """
-                SELECT
-                    COALESCE(yacht_name, name)   AS name,
-                    COALESCE(LOA_m, length_m)    AS length_m
-                FROM yachts
-                """
-            ).fetch_df()
-        finally:
-            con.close()
-    else:
-        df = pd.DataFrame()
+    df = (
+        _select_from_yachts(db_path) if db_path.exists() else pd.DataFrame(columns=REQUIRED)
+    )
 
-    # ------------------------------------------------------------------ #
-    # 2) Fallback: look for exports/new_data.json                        #
-    # ------------------------------------------------------------------ #
     if df.empty:
-        json_path = EXPORT_DIR / "new_data.json"
-        if json_path.exists():
-            try:
-                records = json.loads(json_path.read_text())
-                if isinstance(records, dict):
-                    records = [records]
-                elif not isinstance(records, list):
-                    raise TypeError("export JSON must be list or dict")
+        df = _load_json_fallback()
 
-                if records:
-                    df = pd.DataFrame(records)
-            except Exception as exc:  # noqa: BLE001
-                log.error("could not load JSON fallback: %s", exc, exc_info=True)
-
-    # ------------------------------------------------------------------ #
-    # 3) Validate final frame                                            #
-    # ------------------------------------------------------------------ #
-    required_cols = {"name", "length_m"}
-    if df.empty:
-        raise ValueError("no data found in DB or JSON fallback")
-    if not required_cols.issubset(df.columns):
-        missing = required_cols - set(df.columns)
-        raise ValueError(f"missing columns: {missing}")
-
-    # Normalise column order & types
-    df = df.loc[:, ["name", "length_m"]]
+    # Ensure schema & order
+    df = df.reindex(columns=REQUIRED)
     df["name"] = df["name"].astype(str)
     df["length_m"] = pd.to_numeric(df["length_m"], errors="coerce")
 
-    # ------------------------------------------------------------------ #
-    # 4) Write out                                                       #
-    # ------------------------------------------------------------------ #
     df.to_csv(CSV_PATH, index=False)
     log.info("wrote %d rows → %s", len(df), CSV_PATH)
     return CSV_PATH
@@ -95,4 +105,4 @@ def run(db_path: Path = Path("yachts.duckdb")) -> Path:
 
 if __name__ == "__main__":  # pragma: no cover
     p = run()
-    print("Export wrote:", p, "Exists?", p.exists())
+    print("wrote", p, "exists?", p.exists())
