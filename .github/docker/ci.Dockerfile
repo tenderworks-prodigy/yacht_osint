@@ -16,7 +16,7 @@ RUN apt-get update && apt-get install -y curl && \
 
 # Set Python 3.11 as default
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1 && \
-    ln -s /usr/bin/pip3 /usr/bin/pip
+    ln -sf /usr/bin/pip3 /usr/bin/pip
 
 # Install Python dependencies and dev tools
 COPY requirements.txt /tmp/requirements.txt
