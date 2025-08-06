@@ -3,7 +3,10 @@ from pathlib import Path
 import yaml
 from pydantic import BaseModel, Field
 
-CONFIG_PATH = Path("configs/settings.yml")
+# Resolve the configuration path relative to the project root rather than
+# the current working directory. This makes the config loader work even when
+# the process changes directories (e.g. during tests).
+CONFIG_PATH = Path(__file__).resolve().parents[2] / "configs" / "settings.yml"
 
 
 class SearchConfig(BaseModel):
