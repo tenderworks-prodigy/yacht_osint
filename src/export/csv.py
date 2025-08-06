@@ -21,7 +21,13 @@ def run(db_path: Path = Path("yachts.duckdb")) -> Path:
     if db_path.exists():
         con = duckdb.connect(str(db_path))
         try:
-            df = con.execute("SELECT yacht_name, LOA_m FROM yachts").fetch_df()
+        df = con.execute("""
+            SELECT
+                COALESCE(yacht_name, name)       AS yacht_name,
+                COALESCE(LOA_m, length_m)        AS LOA_m
+            FROM yachts
+        """).fetch_df()
+
         finally:
             con.close()
     else:
@@ -39,6 +45,9 @@ def run(db_path: Path = Path("yachts.duckdb")) -> Path:
                     raise TypeError("export JSON must be list or dict")
                 if records:
                     df = pd.DataFrame(records)
+                    # accept name/length_m too and rename on the fly
+                    rename_map = {"name": "yacht_name", "length_m": "LOA_m"}
+                    df = df.rename(columns=rename_map)
                     required = {"yacht_name", "LOA_m"}
                     if not required.issubset(df.columns):
                         missing = required - set(df.columns)
