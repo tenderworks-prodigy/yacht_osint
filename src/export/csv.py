@@ -12,7 +12,6 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Iterable, List
 
 import duckdb
 import pandas as pd
@@ -32,7 +31,7 @@ REQUIRED = ["name", "length_m"]
 # --------------------------------------------------------------------------- #
 def _columns_in_table(con: duckdb.DuckDBPyConnection, table: str) -> set[str]:
     """Return the set of column names that exist in *table*."""
-    rows: List[tuple] = con.execute(f"PRAGMA table_info('{table}')").fetchall()
+    rows: list[tuple] = con.execute(f"PRAGMA table_info('{table}')").fetchall()
     return {r[1] for r in rows}  # r[1] == column name
 
 
@@ -45,10 +44,7 @@ def _select_from_yachts(db_path: Path) -> pd.DataFrame:
         len_col = "LOA_m" if "LOA_m" in cols else "length_m" if "length_m" in cols else None
 
         if name_col and len_col:
-            query = (
-                f"SELECT {name_col} AS name, {len_col} AS length_m "
-                "FROM yachts"
-            )
+            query = f"SELECT {name_col} AS name, {len_col} AS length_m " "FROM yachts"
             return con.execute(query).fetch_df()
     finally:
         con.close()
@@ -69,9 +65,7 @@ def _load_json_fallback() -> pd.DataFrame:
         if not records:
             return pd.DataFrame(columns=REQUIRED)
         df = pd.DataFrame(records)
-        return df.rename(
-            columns={"yacht_name": "name", "LOA_m": "length_m"}
-        )
+        return df.rename(columns={"yacht_name": "name", "LOA_m": "length_m"})
     except Exception as exc:  # noqa: BLE001
         log.error("could not load JSON fallback: %s", exc, exc_info=True)
         return pd.DataFrame(columns=REQUIRED)
@@ -86,9 +80,7 @@ def run(db_path: Path = Path("yachts.duckdb")) -> Path:
     """Write **exports/yachts.csv** and return its Path."""
     EXPORT_DIR.mkdir(parents=True, exist_ok=True)
 
-    df = (
-        _select_from_yachts(db_path) if db_path.exists() else pd.DataFrame(columns=REQUIRED)
-    )
+    df = _select_from_yachts(db_path) if db_path.exists() else pd.DataFrame(columns=REQUIRED)
 
     if df.empty:
         df = _load_json_fallback()
