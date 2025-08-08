@@ -1,3 +1,6 @@
++12
+-1
+
 from __future__ import annotations
 
 import json
@@ -5,6 +8,10 @@ import logging
 from pathlib import Path
 
 from src.common import load_settings
+from src.export import csv as export_csv
+from src.extract import run_all as extract_run_all
+from src.persist import duckdb_io, new_data
+from src.scrape import crawl
 from src.scrape import rss as rss_mod
 from src.scrape import search as search_mod
 
@@ -19,7 +26,7 @@ def run() -> None:
     if settings.search.domain_blacklist:
         domains = [d for d in domains if d not in settings.search.domain_blacklist]
     feeds = rss_mod.run(domains)
-    # Guardrail: if no feeds were discovered, exit with a non‑zero status. A
+    # Guardrail: if no feeds were discovered, exit with a non-zero status. A
     # successful pipeline run is expected to return at least one feed.
     if not feeds:
         log.error("no feeds discovered from %d domain(s), aborting", len(domains))
@@ -28,6 +35,13 @@ def run() -> None:
     out.parent.mkdir(parents=True, exist_ok=True)
     json.dump(feeds, out.open("w"))
     log.info("saved feeds → %s", out)
+
+    # Downstream pipeline stages
+    crawl.run(feeds)
+    new_data.run()
+    df = extract_run_all.run()
+    db_path = duckdb_io.run(df)
+    export_csv.run(db_path)
 
 
 if __name__ == "__main__":  # pragma: no cover
